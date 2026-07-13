@@ -906,14 +906,14 @@ function renderTools() {
         <div class="tool-card-title-wrap">
           <div class="tool-card-name">${escapeHTML(tool.name)}</div>
           <div class="tool-card-url">${escapeHTML(tool.url)}</div>
+          <span class="tool-card-cat">${toolCategoryLabel(tool.category)}</span>
         </div>
-        <span class="tool-card-cat">${toolCategoryLabel(tool.category)}</span>
+        <div class="tool-card-actions" onclick="event.stopPropagation()">
+          <button class="btn-xs" onclick="editTool('${tool.id}')" title="编辑">✎</button>
+          <button class="btn-xs danger" onclick="removeTool('${tool.id}')" title="删除">✕</button>
+        </div>
       </div>
       ${tool.description ? `<div class="tool-card-desc">${escapeHTML(tool.description)}</div>` : ''}
-      <div class="tool-card-actions" onclick="event.stopPropagation()">
-        <button class="btn-xs" onclick="editTool('${tool.id}')" title="编辑">✎</button>
-        <button class="btn-xs danger" onclick="removeTool('${tool.id}')" title="删除">✕</button>
-      </div>
     </div>
   `).join('');
 }
