@@ -62,6 +62,16 @@ CREATE TABLE IF NOT EXISTS snippets (
     project_id  INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS tools (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    url         TEXT NOT NULL,
+    icon        TEXT NOT NULL DEFAULT '🛠️',
+    description TEXT NOT NULL DEFAULT '',
+    category    TEXT NOT NULL DEFAULT 'utility',
+    sort_order  INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS meta (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -100,9 +110,6 @@ def get_conn() -> Union[sqlite3.Connection, TursoConnection]:
 
 
 def init_db() -> None:
-    # Turso 云端库已导入 schema，跳过本地建表
-    if turso_enabled():
-        return
     with get_conn() as conn:
         conn.executescript(SCHEMA)
 
@@ -178,4 +185,16 @@ def row_to_snippet(row: Any) -> dict:
         "description": row["description"],
         "tags": json.loads(row["tags"]),
         "projectId": row["project_id"],
+    }
+
+
+def row_to_tool(row: Any) -> dict:
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "url": row["url"],
+        "icon": row["icon"],
+        "description": row["description"],
+        "category": row["category"],
+        "sortOrder": row["sort_order"],
     }

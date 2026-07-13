@@ -10,6 +10,7 @@ let _cache = {
   checklist: [],
   operations: [],
   snippets: [],
+  tools: [],
   settings: { theme: 'light' },
   projectStats: {},
 };
@@ -33,12 +34,13 @@ async function apiRequest(method, path, body) {
 // ---------- Load ----------
 
 async function loadAllData() {
-  const [memos, links, checklist, operations, snippets, settings] = await Promise.all([
+  const [memos, links, checklist, operations, snippets, tools, settings] = await Promise.all([
     apiRequest('GET', '/memos'),
     apiRequest('GET', '/links'),
     apiRequest('GET', '/checklist'),
     apiRequest('GET', '/operations'),
     apiRequest('GET', '/snippets'),
+    apiRequest('GET', '/tools'),
     apiRequest('GET', '/settings'),
   ]);
   _cache.memos = memos;
@@ -46,6 +48,7 @@ async function loadAllData() {
   _cache.checklist = checklist;
   _cache.operations = operations;
   _cache.snippets = snippets;
+  _cache.tools = tools;
   _cache.settings = settings;
 
   try {
@@ -84,6 +87,7 @@ function getLinks() { return _cache.links; }
 function getChecklist() { return _cache.checklist; }
 function getOperations() { return _cache.operations; }
 function getSnippets() { return _cache.snippets; }
+function getTools() { return _cache.tools; }
 function getSettings() { return _cache.settings; }
 function getProjectStatsMap() {
   return _cache.projectStats || {};
@@ -210,4 +214,24 @@ async function deleteSnippetById(id) {
   await apiRequest('DELETE', `/snippets/${id}`);
   _cache.snippets = _cache.snippets.filter(s => s.id !== id);
   await refreshProjectStats();
+}
+
+// ---------- Tools ----------
+
+async function createTool(data) {
+  const item = await apiRequest('POST', '/tools', data);
+  _cache.tools.push(item);
+  return item;
+}
+
+async function updateTool(id, data) {
+  const item = await apiRequest('PUT', `/tools/${id}`, data);
+  const idx = _cache.tools.findIndex(t => t.id === id);
+  if (idx >= 0) _cache.tools[idx] = item;
+  return item;
+}
+
+async function deleteToolById(id) {
+  await apiRequest('DELETE', `/tools/${id}`);
+  _cache.tools = _cache.tools.filter(t => t.id !== id);
 }

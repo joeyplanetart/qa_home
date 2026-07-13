@@ -63,6 +63,7 @@
         <button class="btn-icon" onclick="openMemoModal()" title="新建备忘录">📝</button>
         <button class="btn-icon" onclick="openOpsModal()" title="新建操作流程">⚙️</button>
         <button class="btn-icon" onclick="openSnippetModal()" title="新建代码片段">💻</button>
+        <button class="btn-icon" onclick="openToolModal()" title="新建工具链接">🛠️</button>
         <button class="btn-icon theme-toggle" onclick="toggleTheme()" title="切换主题" id="themeBtn">🌙</button>
       </div>
     </div>
@@ -73,6 +74,7 @@
       <button class="tab-btn" data-tab="memos" onclick="switchTab('memos')">📝 备忘录</button>
       <button class="tab-btn" data-tab="operations" onclick="switchTab('operations')">⚙️ 操作流程</button>
       <button class="tab-btn" data-tab="snippets" onclick="switchTab('snippets')">💻 代码片段</button>
+      <button class="tab-btn" data-tab="tools" onclick="switchTab('tools')">🛠️ 工具</button>
     </div>
 
     <!-- Projects -->
@@ -112,6 +114,21 @@
     <!-- Snippets -->
     <div class="tab-content" id="tab-snippets">
       <div class="snippet-list" id="snippetList"></div>
+    </div>
+
+    <!-- Tools -->
+    <div class="tab-content" id="tab-tools">
+      <div class="tools-toolbar">
+        <button class="memo-filter-btn active" data-tool-cat="all" onclick="filterTools('all')">全部</button>
+        <button class="memo-filter-btn" data-tool-cat="api" onclick="filterTools('api')">API</button>
+        <button class="memo-filter-btn" data-tool-cat="testing" onclick="filterTools('testing')">测试</button>
+        <button class="memo-filter-btn" data-tool-cat="devops" onclick="filterTools('devops')">DevOps</button>
+        <button class="memo-filter-btn" data-tool-cat="design" onclick="filterTools('design')">设计</button>
+        <button class="memo-filter-btn" data-tool-cat="utility" onclick="filterTools('utility')">实用</button>
+        <button class="memo-filter-btn" data-tool-cat="other" onclick="filterTools('other')">其他</button>
+        <button class="btn-add tools-add-btn" onclick="openToolModal()">+ 添加工具</button>
+      </div>
+      <div class="tools-grid" id="toolsGrid"></div>
     </div>
 
   </main>
@@ -292,6 +309,48 @@
       <button class="btn-danger" id="snippetDeleteBtn" style="display:none;margin-right:auto;" onclick="deleteSnippet()">🗑 删除</button>
       <button class="btn-secondary" onclick="closeModal('snippetModalOverlay')">取消</button>
       <button class="btn-primary" onclick="saveSnippet()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tool Modal -->
+<div class="modal-overlay" id="toolModalOverlay">
+  <div class="modal">
+    <h3 class="modal-title" id="toolModalTitle">新建工具链接</h3>
+    <input type="hidden" id="toolEditId">
+    <div class="modal-field">
+      <label>名称</label>
+      <input type="text" id="toolName" placeholder="工具名称...">
+    </div>
+    <div class="modal-field">
+      <label>URL</label>
+      <input type="text" id="toolUrl" placeholder="https://...">
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>图标 (Emoji)</label>
+        <input type="text" id="toolIcon" placeholder="🛠️" maxlength="4">
+      </div>
+      <div class="modal-field">
+        <label>分类</label>
+        <select id="toolCategory">
+          <option value="api">API</option>
+          <option value="testing">测试</option>
+          <option value="devops">DevOps</option>
+          <option value="design">设计</option>
+          <option value="utility">实用</option>
+          <option value="other">其他</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label>描述</label>
+      <input type="text" id="toolDescription" placeholder="用途说明...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-danger" id="toolDeleteBtn" style="display:none;margin-right:auto;" onclick="deleteTool()">🗑 删除</button>
+      <button class="btn-secondary" onclick="closeModal('toolModalOverlay')">取消</button>
+      <button class="btn-primary" onclick="saveTool()">保存</button>
     </div>
   </div>
 </div>

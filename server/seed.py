@@ -155,3 +155,32 @@ def seed_if_empty() -> None:
         conn.commit()
 
     mark_seeded()
+
+
+def seed_tools_if_empty() -> None:
+    with get_conn() as conn:
+        row = conn.execute("SELECT COUNT(*) AS cnt FROM tools").fetchone()
+        if row and row["cnt"] > 0:
+            return
+
+    def tool(name, url, icon, description, category, sort_order):
+        return (_uid(), name, url, icon, description, category, sort_order)
+
+    with get_conn() as conn:
+        conn.executemany(
+            """INSERT INTO tools (id, name, url, icon, description, category, sort_order)
+               VALUES (?,?,?,?,?,?,?)""",
+            [
+                tool("Postman", "https://www.postman.com/", "📮", "API 调试与集合管理", "api", 0),
+                tool("Hoppscotch", "https://hoppscotch.io/", "🐝", "轻量在线 API 客户端", "api", 1),
+                tool("JWT.io", "https://jwt.io/", "🔐", "JWT 解码与调试", "api", 2),
+                tool("Swagger Editor", "https://editor.swagger.io/", "📋", "OpenAPI 规范编辑", "api", 3),
+                tool("JSON Formatter", "https://jsonformatter.org/", "📄", "JSON 格式化与校验", "utility", 4),
+                tool("Regex101", "https://regex101.com/", "🔤", "正则表达式测试", "utility", 5),
+                tool("Crontab Guru", "https://crontab.guru/", "⏰", "Cron 表达式解析", "utility", 6),
+                tool("BrowserStack", "https://www.browserstack.com/", "🌐", "跨浏览器兼容性测试", "testing", 7),
+                tool("Figma", "https://www.figma.com/", "🎨", "设计稿查看与标注", "design", 8),
+                tool("GitHub Actions", "https://github.com/features/actions", "⚡", "CI/CD 工作流", "devops", 9),
+            ],
+        )
+        conn.commit()

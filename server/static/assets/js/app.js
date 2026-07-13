@@ -38,6 +38,7 @@ document.addEventListener('keydown', function (e) {
 //  State
 // ========================================
 let currentMemoFilter = 'all';
+let currentToolFilter = 'all';
 let currentGroupFilter = 'all';
 let currentProjectFilter = null; // null = all projects
 let projectSearchQuery = '';
@@ -864,6 +865,136 @@ async function removeSnippet(id) {
 }
 
 // ========================================
+//  Tools
+// ========================================
+const TOOL_CATEGORY_LABELS = {
+  api: 'API',
+  testing: '测试',
+  devops: 'DevOps',
+  design: '设计',
+  utility: '实用',
+  other: '其他',
+};
+
+function toolCategoryLabel(cat) {
+  return TOOL_CATEGORY_LABELS[cat] || cat;
+}
+
+function filterTools(cat) {
+  currentToolFilter = cat;
+  document.querySelectorAll('[data-tool-cat]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.toolCat === cat);
+  });
+  renderTools();
+}
+
+function renderTools() {
+  const tools = getTools()
+    .filter(t => currentToolFilter === 'all' || t.category === currentToolFilter)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+  const grid = $('toolsGrid');
+
+  if (!tools.length) {
+    grid.innerHTML = '<div class="empty-state">暂无工具链接，点击「+ 添加工具」开始收藏</div>';
+    return;
+  }
+
+  grid.innerHTML = tools.map(tool => `
+    <div class="tool-card" onclick="window.open('${escapeHTML(tool.url)}', '_blank')">
+      <div class="tool-card-header">
+        <span class="tool-card-icon">${tool.icon || '🛠️'}</span>
+        <div class="tool-card-title-wrap">
+          <div class="tool-card-name">${escapeHTML(tool.name)}</div>
+          <div class="tool-card-url">${escapeHTML(tool.url)}</div>
+        </div>
+        <span class="tool-card-cat">${toolCategoryLabel(tool.category)}</span>
+      </div>
+      ${tool.description ? `<div class="tool-card-desc">${escapeHTML(tool.description)}</div>` : ''}
+      <div class="tool-card-actions" onclick="event.stopPropagation()">
+        <button class="btn-xs" onclick="editTool('${tool.id}')" title="编辑">✎</button>
+        <button class="btn-xs danger" onclick="removeTool('${tool.id}')" title="删除">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openToolModal(id) {
+  if (id) {
+    const tool = getTools().find(t => t.id === id);
+    if (!tool) return;
+    $('toolEditId').value = tool.id;
+    $('toolName').value = tool.name;
+    $('toolUrl').value = tool.url;
+    $('toolIcon').value = tool.icon || '🛠️';
+    $('toolCategory').value = tool.category || 'utility';
+    $('toolDescription').value = tool.description || '';
+    $('toolModalTitle').textContent = '编辑工具链接';
+    $('toolDeleteBtn').style.display = '';
+  } else {
+    $('toolEditId').value = '';
+    $('toolName').value = '';
+    $('toolUrl').value = '';
+    $('toolIcon').value = '🛠️';
+    $('toolCategory').value = 'utility';
+    $('toolDescription').value = '';
+    $('toolModalTitle').textContent = '新建工具链接';
+    $('toolDeleteBtn').style.display = 'none';
+  }
+  openModal('toolModalOverlay');
+}
+
+function editTool(id) { openToolModal(id); }
+
+async function saveTool() {
+  const id = $('toolEditId').value;
+  const name = $('toolName').value.trim();
+  const url = $('toolUrl').value.trim();
+  const icon = $('toolIcon').value.trim() || '🛠️';
+  const category = $('toolCategory').value;
+  const description = $('toolDescription').value.trim();
+
+  if (!name || !url) { toast('⚠️ 名称和 URL 不能为空'); return; }
+
+  const data = { name, url, icon, category, description, sortOrder: getTools().length };
+  try {
+    if (id) {
+      const existing = getTools().find(t => t.id === id);
+      await updateTool(id, { ...data, sortOrder: existing ? existing.sortOrder : 0 });
+    } else {
+      await createTool(data);
+    }
+    closeModal('toolModalOverlay');
+    renderTools();
+    toast(id ? '✅ 工具已更新' : '✅ 工具已添加');
+  } catch (e) {
+    toast('⚠️ 保存失败: ' + e.message);
+  }
+}
+
+async function deleteTool() {
+  const id = $('toolEditId').value;
+  if (!id) return;
+  try {
+    await deleteToolById(id);
+    closeModal('toolModalOverlay');
+    renderTools();
+    toast('🗑 工具已删除');
+  } catch (e) {
+    toast('⚠️ 删除失败: ' + e.message);
+  }
+}
+
+async function removeTool(id) {
+  try {
+    await deleteToolById(id);
+    renderTools();
+    toast('🗑 工具已删除');
+  } catch (e) {
+    toast('⚠️ 删除失败: ' + e.message);
+  }
+}
+
+// ========================================
 //  Global Search
 // ========================================
 let _searchResults = [];
@@ -899,6 +1030,14 @@ function handleGlobalSearch() {
     }
   });
 
+  getTools().forEach(t => {
+    const cat = toolCategoryLabel(t.category).toLowerCase();
+    if (t.name.toLowerCase().includes(query) || t.url.toLowerCase().includes(query) ||
+        (t.description || '').toLowerCase().includes(query) || cat.includes(query)) {
+      _searchResults.push({ type: '工具', title: t.name, sub: t.description || t.url, target: t.id, kind: 'tool' });
+    }
+  });
+
   PROJECTS.forEach(p => {
     if (p.short_name.toLowerCase().includes(query) || p.domain.toLowerCase().includes(query)) {
       _searchResults.push({ type: '项目', title: p.short_name, sub: p.domain, target: p.id, kind: 'project' });
@@ -927,6 +1066,7 @@ function dispatchSearchResult(index) {
   if (r.kind === 'memo') { switchTab('memos'); editMemo(r.target); }
   else if (r.kind === 'ops') { switchTab('operations'); setTimeout(() => toggleOperation(r.target), 100); }
   else if (r.kind === 'snippet') { switchTab('snippets'); }
+  else if (r.kind === 'tool') { switchTab('tools'); editTool(r.target); }
   else if (r.kind === 'project') { switchTab('projects'); setProjectFilter(r.target); }
 }
 
@@ -956,6 +1096,7 @@ function renderAllContent() {
   renderMemos();
   renderOperations();
   renderSnippets();
+  renderTools();
 }
 
 // ========================================

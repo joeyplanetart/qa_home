@@ -17,8 +17,9 @@ from .db import (
     row_to_memo,
     row_to_operation,
     row_to_snippet,
+    row_to_tool,
 )
-from .seed import seed_if_empty
+from .seed import seed_if_empty, seed_tools_if_empty
 
 STATIC = Path(__file__).resolve().parent / "static"
 
@@ -87,6 +88,15 @@ class SettingsIn(BaseModel):
     theme: str = "light"
 
 
+class ToolIn(BaseModel):
+    name: str
+    url: str
+    icon: str = "🛠️"
+    description: str = ""
+    category: str = "utility"
+    sortOrder: int = 0
+
+
 # ---------- App ----------
 
 app = FastAPI(title="QA Home API")
@@ -103,6 +113,7 @@ app.add_middleware(
 def on_startup() -> None:
     init_db()
     seed_if_empty()
+    seed_tools_if_empty()
 
 
 # ---------- Settings ----------
@@ -381,6 +392,55 @@ def delete_snippet(snippet_id: str) -> dict:
         conn.commit()
         if cur.rowcount == 0:
             raise HTTPException(404, "Snippet not found")
+    return {"ok": True}
+
+
+# ---------- Tools ----------
+
+@app.get("/api/tools")
+def list_tools() -> list[dict]:
+    with get_conn() as conn:
+        rows = conn.execute("SELECT * FROM tools ORDER BY sort_order, name").fetchall()
+    return [row_to_tool(r) for r in rows]
+
+
+@app.post("/api/tools", status_code=201)
+def create_tool(body: ToolIn) -> dict:
+    tool_id = _uid()
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO tools (id, name, url, icon, description, category, sort_order)
+               VALUES (?,?,?,?,?,?,?)""",
+            (tool_id, body.name, body.url, body.icon, body.description, body.category, body.sortOrder),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM tools WHERE id = ?", (tool_id,)).fetchone()
+    return row_to_tool(row)
+
+
+@app.put("/api/tools/{tool_id}")
+def update_tool(tool_id: str, body: ToolIn) -> dict:
+    with get_conn() as conn:
+        existing = conn.execute("SELECT * FROM tools WHERE id = ?", (tool_id,)).fetchone()
+        if not existing:
+            raise HTTPException(404, "Tool not found")
+        conn.execute(
+            """UPDATE tools SET name=?, url=?, icon=?, description=?, category=?, sort_order=?
+               WHERE id=?""",
+            (body.name, body.url, body.icon, body.description, body.category, body.sortOrder, tool_id),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM tools WHERE id = ?", (tool_id,)).fetchone()
+    return row_to_tool(row)
+
+
+@app.delete("/api/tools/{tool_id}")
+def delete_tool(tool_id: str) -> dict:
+    with get_conn() as conn:
+        cur = conn.execute("DELETE FROM tools WHERE id = ?", (tool_id,))
+        conn.commit()
+        if cur.rowcount == 0:
+            raise HTTPException(404, "Tool not found")
     return {"ok": True}
 
 
