@@ -3,7 +3,7 @@
   "functions": {
     "server/app.py": {
       "maxDuration": 30,
-      "includeFiles": "public/**"
+      "includeFiles": "server/static/**"
     }
   }
 }
