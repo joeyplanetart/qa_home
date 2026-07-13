@@ -22,6 +22,7 @@ from .db import (
 from .seed import seed_if_empty
 
 ROOT = Path(__file__).resolve().parent.parent
+PUBLIC = ROOT / "public"
 
 
 def _uid() -> str:
@@ -414,8 +415,8 @@ def project_stats() -> dict[str, dict[str, int]]:
 
 @app.get("/")
 def index() -> FileResponse:
-    return FileResponse(ROOT / "index.html")
+    return FileResponse(PUBLIC / "index.html")
 
 
-app.mount("/assets", StaticFiles(directory=ROOT / "assets"), name="assets")
-app.mount("/design", StaticFiles(directory=ROOT / "design"), name="design")
+app.mount("/assets", StaticFiles(directory=PUBLIC / "assets"), name="assets")
+app.mount("/design", StaticFiles(directory=PUBLIC / "design"), name="design")

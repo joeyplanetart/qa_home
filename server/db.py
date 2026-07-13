@@ -1,6 +1,10 @@
 import json
+import os
 import sqlite3
 from pathlib import Path
+from typing import Any, Union
+
+from .turso import TursoConnection, connect_turso, turso_enabled
 
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "qa.db"
 
@@ -65,7 +69,28 @@ CREATE TABLE IF NOT EXISTS meta (
 """
 
 
-def get_conn() -> sqlite3.Connection:
+def _load_dotenv() -> None:
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key:
+            os.environ[key] = value
+
+
+_load_dotenv()
+
+
+def get_conn() -> Union[sqlite3.Connection, TursoConnection]:
+    if turso_enabled():
+        return connect_turso()
+
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -75,6 +100,9 @@ def get_conn() -> sqlite3.Connection:
 
 
 def init_db() -> None:
+    # Turso 云端库已导入 schema，跳过本地建表
+    if turso_enabled():
+        return
     with get_conn() as conn:
         conn.executescript(SCHEMA)
 
@@ -95,7 +123,7 @@ def mark_seeded() -> None:
         conn.commit()
 
 
-def row_to_memo(row: sqlite3.Row) -> dict:
+def row_to_memo(row: Any) -> dict:
     return {
         "id": row["id"],
         "title": row["title"],
@@ -109,7 +137,7 @@ def row_to_memo(row: sqlite3.Row) -> dict:
     }
 
 
-def row_to_link(row: sqlite3.Row) -> dict:
+def row_to_link(row: Any) -> dict:
     return {
         "id": row["id"],
         "name": row["name"],
@@ -120,7 +148,7 @@ def row_to_link(row: sqlite3.Row) -> dict:
     }
 
 
-def row_to_checklist(row: sqlite3.Row) -> dict:
+def row_to_checklist(row: Any) -> dict:
     return {
         "id": row["id"],
         "text": row["text"],
@@ -130,7 +158,7 @@ def row_to_checklist(row: sqlite3.Row) -> dict:
     }
 
 
-def row_to_operation(row: sqlite3.Row) -> dict:
+def row_to_operation(row: Any) -> dict:
     return {
         "id": row["id"],
         "title": row["title"],
@@ -141,7 +169,7 @@ def row_to_operation(row: sqlite3.Row) -> dict:
     }
 
 
-def row_to_snippet(row: sqlite3.Row) -> dict:
+def row_to_snippet(row: Any) -> dict:
     return {
         "id": row["id"],
         "title": row["title"],
