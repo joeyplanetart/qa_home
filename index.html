@@ -20,18 +20,6 @@
       </div>
     </div>
 
-    <!-- Project Filter -->
-    <div class="sidebar-section">
-      <div class="sidebar-section-header">
-        <span class="sidebar-section-title">📦 项目筛选</span>
-      </div>
-      <div class="project-filter">
-        <select id="sidebarProjectFilter" onchange="setProjectFilter(this.value)"></select>
-        <div id="activeProjectBadge" class="active-project-badge" style="display:none;"></div>
-        <span class="project-filter-hint">选择项目后，备忘录/流程/片段将自动筛选</span>
-      </div>
-    </div>
-
     <!-- Quick Links -->
     <div class="sidebar-section">
       <div class="sidebar-section-header">
@@ -59,11 +47,17 @@
   <main class="main-content">
 
     <div class="header">
-      <div class="search-wrapper">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="globalSearch" placeholder="搜索项目、备忘录、流程、代码片段..."
-               oninput="handleGlobalSearch()" onfocus="handleGlobalSearch()">
-        <div class="search-dropdown" id="searchDropdown"></div>
+      <div class="header-toolbar">
+        <div class="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="globalSearch" placeholder="搜索项目、备忘录、流程、代码片段..."
+                 oninput="handleGlobalSearch()" onfocus="handleGlobalSearch()">
+          <div class="search-dropdown" id="searchDropdown"></div>
+        </div>
+        <div class="header-project-filter">
+          <select id="projectFilter" onchange="setProjectFilter(this.value)" title="按项目筛选"></select>
+          <div id="activeProjectBadge" class="active-project-badge" style="display:none;"></div>
+        </div>
       </div>
       <div class="header-actions">
         <button class="btn-icon" onclick="openMemoModal()" title="新建备忘录">📝</button>

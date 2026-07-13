@@ -111,7 +111,7 @@ function clearProjectFilter() {
 }
 
 function updateProjectFilterUI() {
-  const select = $('sidebarProjectFilter');
+  const select = $('projectFilter');
   if (select) select.value = currentProjectFilter === null ? 'all' : String(currentProjectFilter);
 
   const badge = $('activeProjectBadge');
@@ -148,9 +148,9 @@ function populateProjectSelects() {
     if (el) el.innerHTML = options;
   });
 
-  const sidebarSelect = $('sidebarProjectFilter');
-  if (sidebarSelect) {
-    sidebarSelect.innerHTML = '<option value="all">全部项目</option>' + options;
+  const headerSelect = $('projectFilter');
+  if (headerSelect) {
+    headerSelect.innerHTML = '<option value="all">📦 全部项目</option>' + options;
   }
 }
 
@@ -229,7 +229,6 @@ async function saveLink() {
 }
 
 async function removeLink(id) {
-  if (!confirm('确定删除此链接？')) return;
   try {
     await deleteLinkById(id);
     renderQuickLinks();
@@ -325,7 +324,6 @@ async function removeChecklistItem(id) {
 }
 
 async function resetChecklist() {
-  if (!confirm('重置所有任务？将取消所有勾选。')) return;
   try {
     await resetChecklistAll();
     renderChecklist();
@@ -448,19 +446,7 @@ function handleProjectSearch() {
 // ========================================
 //  Memos
 // ========================================
-function renderFilterBanner(containerId, type) {
-  if (currentProjectFilter === null) return '';
-  const p = getProjectById(currentProjectFilter);
-  if (!p) return '';
-  return `
-    <div class="filter-banner">
-      <span>筛选中: ${p.icon} <strong>${escapeHTML(p.short_name)}</strong> 的${type}</span>
-      <button onclick="clearProjectFilter()">清除筛选 ✕</button>
-    </div>`;
-}
-
 function renderMemos() {
-  const banner = renderFilterBanner('memoGrid', '备忘录');
   let memos = getMemos().filter(matchesProjectFilter);
   if (currentMemoFilter !== 'all') {
     memos = memos.filter(m => m.category === currentMemoFilter);
@@ -473,7 +459,7 @@ function renderMemos() {
 
   const grid = $('memoGrid');
   if (!memos.length) {
-    grid.innerHTML = banner + `
+    grid.innerHTML = `
       <div class="empty-state" style="grid-column:1/-1;">
         <div class="empty-state-icon">📝</div>
         <div class="empty-state-text">${currentProjectFilter !== null ? '该项目暂无备忘录' : '暂无备忘录，点击右上角 📝 创建'}</div>
@@ -481,7 +467,7 @@ function renderMemos() {
     return;
   }
 
-  grid.innerHTML = banner + memos.map(memo => `
+  grid.innerHTML = memos.map(memo => `
     <div class="memo-card color-${memo.color} ${memo.pinned ? 'pinned' : ''}" onclick="editMemo('${memo.id}')">
       ${projectTagHtml(memo.projectId)}
       <div class="memo-title">${escapeHTML(memo.title)}</div>
@@ -565,7 +551,7 @@ async function saveMemo() {
 
 async function deleteMemo() {
   const id = $('memoEditId').value;
-  if (!id || !confirm('确定永久删除此备忘录？')) return;
+  if (!id) return;
   try {
     await deleteMemoById(id);
     closeModal('memoModalOverlay');
@@ -578,7 +564,6 @@ async function deleteMemo() {
 }
 
 async function removeMemo(id) {
-  if (!confirm('确定删除此备忘录？')) return;
   try {
     await deleteMemoById(id);
     renderMemos();
@@ -593,12 +578,11 @@ async function removeMemo(id) {
 //  Operations
 // ========================================
 function renderOperations() {
-  const banner = renderFilterBanner('opsList', '操作流程');
   const ops = getOperations().filter(matchesProjectFilter);
   const container = $('opsList');
 
   if (!ops.length) {
-    container.innerHTML = banner + `
+    container.innerHTML = `
       <div class="empty-state">
         <div class="empty-state-icon">⚙️</div>
         <div class="empty-state-text">${currentProjectFilter !== null ? '该项目暂无操作流程' : '暂无操作流程，点击右上角 ⚙️ 添加'}</div>
@@ -606,7 +590,7 @@ function renderOperations() {
     return;
   }
 
-  container.innerHTML = banner + ops.map(op => `
+  container.innerHTML = ops.map(op => `
     <div class="ops-card" id="ops-${op.id}">
       <div class="ops-header" onclick="toggleOperation('${op.id}')">
         <div class="ops-title-wrap">
@@ -698,7 +682,7 @@ async function saveOperation() {
 
 async function deleteOperation() {
   const id = $('opsEditId').value;
-  if (!id || !confirm('确定永久删除此流程？')) return;
+  if (!id) return;
   try {
     await deleteOperationById(id);
     closeModal('opsModalOverlay');
@@ -711,7 +695,6 @@ async function deleteOperation() {
 }
 
 async function removeOperation(id) {
-  if (!confirm('确定删除此流程？')) return;
   try {
     await deleteOperationById(id);
     renderOperations();
@@ -726,12 +709,11 @@ async function removeOperation(id) {
 //  Snippets
 // ========================================
 function renderSnippets() {
-  const banner = renderFilterBanner('snippetList', '代码片段');
   const snippets = getSnippets().filter(matchesProjectFilter);
   const container = $('snippetList');
 
   if (!snippets.length) {
-    container.innerHTML = banner + `
+    container.innerHTML = `
       <div class="empty-state">
         <div class="empty-state-icon">💻</div>
         <div class="empty-state-text">${currentProjectFilter !== null ? '该项目暂无代码片段' : '暂无代码片段，点击右上角 💻 添加'}</div>
@@ -739,7 +721,7 @@ function renderSnippets() {
     return;
   }
 
-  container.innerHTML = banner + snippets.map(s => `
+  container.innerHTML = snippets.map(s => `
     <div class="snippet-card">
       <div class="snippet-header">
         <div class="snippet-title-wrap">
@@ -831,7 +813,7 @@ async function saveSnippet() {
 
 async function deleteSnippet() {
   const id = $('snippetEditId').value;
-  if (!id || !confirm('确定永久删除此片段？')) return;
+  if (!id) return;
   try {
     await deleteSnippetById(id);
     closeModal('snippetModalOverlay');
@@ -844,7 +826,6 @@ async function deleteSnippet() {
 }
 
 async function removeSnippet(id) {
-  if (!confirm('确定删除此片段？')) return;
   try {
     await deleteSnippetById(id);
     renderSnippets();

@@ -131,6 +131,14 @@ input:focus, textarea:focus, select:focus {
   flex-wrap: wrap;
 }
 
+.header-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
 .header-left { display: flex; align-items: center; gap: 12px; }
 
 .logo {
@@ -149,7 +157,7 @@ input:focus, textarea:focus, select:focus {
   position: relative;
   flex: 1;
   max-width: 480px;
-  min-width: 200px;
+  min-width: 180px;
 }
 
 .search-wrapper input {
@@ -241,32 +249,37 @@ input:focus, textarea:focus, select:focus {
 
 .btn-add:hover { background: var(--accent); color: #fff; }
 
-/* Project filter in sidebar */
-.project-filter {
+/* Project filter in header */
+.header-project-filter {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-.project-filter select {
+.header-project-filter select {
+  height: 40px;
   font-size: 13px;
-}
-
-.project-filter-hint {
-  font-size: 11px;
-  color: var(--text-muted);
+  border-radius: 20px;
+  padding: 0 14px;
+  min-width: 150px;
+  max-width: 200px;
+  width: auto;
+  cursor: pointer;
 }
 
 .active-project-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  height: 40px;
+  padding: 0 12px;
   background: var(--accent-light);
-  border-radius: var(--radius-sm);
+  border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
   color: var(--accent);
+  white-space: nowrap;
 }
 
 .active-project-badge button {
@@ -890,28 +903,6 @@ input:focus, textarea:focus, select:focus {
 .empty-state-icon { font-size: 48px; margin-bottom: 12px; }
 .empty-state-text { font-size: 14px; }
 
-.filter-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  background: var(--accent-light);
-  border-radius: var(--radius-sm);
-  margin-bottom: 16px;
-  font-size: 13px;
-}
-
-.filter-banner button {
-  margin-left: auto;
-  background: transparent;
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 8px;
-}
-
-.filter-banner button:hover { color: var(--danger); }
-
 .toast-container {
   position: fixed;
   bottom: 20px; right: 20px;
@@ -948,7 +939,10 @@ input:focus, textarea:focus, select:focus {
   .memo-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
   .project-grid { grid-template-columns: 1fr; }
   .header { flex-direction: column; align-items: stretch; }
+  .header-toolbar { flex-direction: column; align-items: stretch; }
   .search-wrapper { max-width: none; }
+  .header-project-filter { width: 100%; }
+  .header-project-filter select { max-width: none; width: 100%; }
 }
 
 @media (max-width: 480px) {
