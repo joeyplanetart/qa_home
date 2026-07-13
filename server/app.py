@@ -411,12 +411,15 @@ def project_stats() -> dict[str, dict[str, int]]:
     return {str(k): v for k, v in stats.items()}
 
 
-# ---------- Static files ----------
+# ---------- Static files (本地开发用；Vercel 由 public/ CDN 提供) ----------
 
-@app.get("/")
-def index() -> FileResponse:
-    return FileResponse(PUBLIC / "index.html")
+if (PUBLIC / "index.html").is_file():
+    @app.get("/")
+    def index() -> FileResponse:
+        return FileResponse(PUBLIC / "index.html")
 
+if (PUBLIC / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=PUBLIC / "assets"), name="assets")
 
-app.mount("/assets", StaticFiles(directory=PUBLIC / "assets"), name="assets")
-app.mount("/design", StaticFiles(directory=PUBLIC / "design"), name="design")
+if (PUBLIC / "design").is_dir():
+    app.mount("/design", StaticFiles(directory=PUBLIC / "design"), name="design")
