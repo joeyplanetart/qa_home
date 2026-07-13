@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA Home — PlanetArt</title>
+  <link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+
+<div class="app-container">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="header-left">
+      <div class="logo">🧪</div>
+      <div>
+        <div class="header-title">QA Home</div>
+        <div class="header-date" id="headerDate"></div>
+      </div>
+    </div>
+
+    <!-- Project Filter -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-header">
+        <span class="sidebar-section-title">📦 项目筛选</span>
+      </div>
+      <div class="project-filter">
+        <select id="sidebarProjectFilter" onchange="setProjectFilter(this.value)"></select>
+        <div id="activeProjectBadge" class="active-project-badge" style="display:none;"></div>
+        <span class="project-filter-hint">选择项目后，备忘录/流程/片段将自动筛选</span>
+      </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-header">
+        <span class="sidebar-section-title">🔗 快捷链接</span>
+        <button class="btn-add" onclick="openLinkModal()">+ 添加</button>
+      </div>
+      <div id="quickLinksList"></div>
+    </div>
+
+    <!-- Daily Checklist -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-header">
+        <span class="sidebar-section-title">✅ 每日清单</span>
+        <button class="btn-add" onclick="openChecklistModal()">+ 添加</button>
+      </div>
+      <div class="checklist-progress">
+        <div class="checklist-progress-bar" id="checklistBar" style="width:0%"></div>
+      </div>
+      <div id="checklistItems"></div>
+      <button class="checklist-reset" onclick="resetChecklist()">↺ 全部重置</button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <div class="header">
+      <div class="search-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="globalSearch" placeholder="搜索项目、备忘录、流程、代码片段..."
+               oninput="handleGlobalSearch()" onfocus="handleGlobalSearch()">
+        <div class="search-dropdown" id="searchDropdown"></div>
+      </div>
+      <div class="header-actions">
+        <button class="btn-icon" onclick="openMemoModal()" title="新建备忘录">📝</button>
+        <button class="btn-icon" onclick="openOpsModal()" title="新建操作流程">⚙️</button>
+        <button class="btn-icon" onclick="openSnippetModal()" title="新建代码片段">💻</button>
+        <button class="btn-icon theme-toggle" onclick="toggleTheme()" title="切换主题" id="themeBtn">🌙</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="projects" onclick="switchTab('projects')">📦 项目</button>
+      <button class="tab-btn" data-tab="memos" onclick="switchTab('memos')">📝 备忘录</button>
+      <button class="tab-btn" data-tab="operations" onclick="switchTab('operations')">⚙️ 操作流程</button>
+      <button class="tab-btn" data-tab="snippets" onclick="switchTab('snippets')">💻 代码片段</button>
+    </div>
+
+    <!-- Projects -->
+    <div class="tab-content active" id="tab-projects">
+      <div class="projects-toolbar">
+        <input type="text" class="projects-search" id="projectSearch"
+               placeholder="搜索项目名称、域名或 ID..." oninput="handleProjectSearch()">
+        <button class="group-filter-btn active" data-group="all" onclick="filterProjectGroups('all')">全部</button>
+        <button class="group-filter-btn" data-group="planetart" onclick="filterProjectGroups('planetart')">🏢 内部</button>
+        <button class="group-filter-btn" data-group="cards" onclick="filterProjectGroups('cards')">🎴 卡片</button>
+        <button class="group-filter-btn" data-group="customcase" onclick="filterProjectGroups('customcase')">📱 手机壳</button>
+        <button class="group-filter-btn" data-group="gifts" onclick="filterProjectGroups('gifts')">🎁 礼品</button>
+        <button class="group-filter-btn" data-group="cafepress" onclick="filterProjectGroups('cafepress')">☕ CafePress</button>
+      </div>
+      <div id="projectsContainer"></div>
+    </div>
+
+    <!-- Memos -->
+    <div class="tab-content" id="tab-memos">
+      <div class="memo-controls">
+        <button class="memo-filter-btn active" data-cat="all" onclick="filterMemos('all')">全部</button>
+        <button class="memo-filter-btn" data-cat="general" onclick="filterMemos('general')">通用</button>
+        <button class="memo-filter-btn" data-cat="api" onclick="filterMemos('api')">API</button>
+        <button class="memo-filter-btn" data-cat="db" onclick="filterMemos('db')">数据库</button>
+        <button class="memo-filter-btn" data-cat="env" onclick="filterMemos('env')">环境</button>
+        <button class="memo-filter-btn" data-cat="bug" onclick="filterMemos('bug')">Bug</button>
+        <button class="memo-filter-btn" data-cat="other" onclick="filterMemos('other')">其他</button>
+      </div>
+      <div class="memo-grid" id="memoGrid"></div>
+    </div>
+
+    <!-- Operations -->
+    <div class="tab-content" id="tab-operations">
+      <div class="ops-list" id="opsList"></div>
+    </div>
+
+    <!-- Snippets -->
+    <div class="tab-content" id="tab-snippets">
+      <div class="snippet-list" id="snippetList"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modals -->
+
+<!-- Memo Modal -->
+<div class="modal-overlay" id="memoModalOverlay">
+  <div class="modal">
+    <h3 class="modal-title" id="memoModalTitle">新建备忘录</h3>
+    <input type="hidden" id="memoEditId">
+    <div class="modal-field">
+      <label>标题</label>
+      <input type="text" id="memoTitle" placeholder="备忘录标题...">
+    </div>
+    <div class="modal-field">
+      <label>内容</label>
+      <textarea id="memoContent" rows="4" placeholder="备忘录内容..."></textarea>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>所属项目</label>
+        <select id="memoProject"></select>
+      </div>
+      <div class="modal-field">
+        <label>分类</label>
+        <select id="memoCategory">
+          <option value="general">通用</option>
+          <option value="api">API</option>
+          <option value="db">数据库</option>
+          <option value="env">环境</option>
+          <option value="bug">Bug</option>
+          <option value="other">其他</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>颜色</label>
+        <select id="memoColor">
+          <option value="yellow">🟡 黄色</option>
+          <option value="blue">🔵 蓝色</option>
+          <option value="green">🟢 绿色</option>
+          <option value="pink">🩷 粉色</option>
+          <option value="purple">🟣 紫色</option>
+          <option value="orange">🟠 橙色</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:20px;">
+          <input type="checkbox" id="memoPinned" style="width:auto;"> 📌 置顶
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-danger" id="memoDeleteBtn" style="display:none;margin-right:auto;" onclick="deleteMemo()">🗑 删除</button>
+      <button class="btn-secondary" onclick="closeModal('memoModalOverlay')">取消</button>
+      <button class="btn-primary" onclick="saveMemo()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Link Modal -->
+<div class="modal-overlay" id="linkModalOverlay">
+  <div class="modal">
+    <h3 class="modal-title" id="linkModalTitle">新建快捷链接</h3>
+    <input type="hidden" id="linkEditId">
+    <div class="modal-field">
+      <label>名称</label>
+      <input type="text" id="linkName" placeholder="链接名称...">
+    </div>
+    <div class="modal-field">
+      <label>URL</label>
+      <input type="text" id="linkUrl" placeholder="https://...">
+    </div>
+    <div class="modal-field">
+      <label>图标 (Emoji)</label>
+      <input type="text" id="linkIcon" placeholder="🔗" maxlength="4">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('linkModalOverlay')">取消</button>
+      <button class="btn-primary" onclick="saveLink()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Checklist Modal -->
+<div class="modal-overlay" id="checklistModalOverlay">
+  <div class="modal">
+    <h3 class="modal-title" id="checklistModalTitle">新建任务</h3>
+    <input type="hidden" id="checklistEditId">
+    <div class="modal-field">
+      <label>任务内容</label>
+      <input type="text" id="checklistText" placeholder="任务描述...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('checklistModalOverlay')">取消</button>
+      <button class="btn-primary" onclick="saveChecklistItem()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Operation Modal -->
+<div class="modal-overlay" id="opsModalOverlay">
+  <div class="modal">
+    <h3 class="modal-title" id="opsModalTitle">新建操作流程</h3>
+    <input type="hidden" id="opsEditId">
+    <div class="modal-field">
+      <label>标题</label>
+      <input type="text" id="opsTitle" placeholder="流程名称...">
+    </div>
+    <div class="modal-field">
+      <label>所属项目</label>
+      <select id="opsProject"></select>
+    </div>
+    <div class="modal-field">
+      <label>描述</label>
+      <textarea id="opsDescription" rows="2" placeholder="简要描述..."></textarea>
+    </div>
+    <div class="modal-field">
+      <label>步骤 (每行一个)</label>
+      <textarea id="opsSteps" rows="5" placeholder="步骤 1&#10;步骤 2&#10;步骤 3..."></textarea>
+    </div>
+    <div class="modal-field">
+      <label>标签 (逗号分隔)</label>
+      <input type="text" id="opsTags" placeholder="deploy, production, api">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-danger" id="opsDeleteBtn" style="display:none;margin-right:auto;" onclick="deleteOperation()">🗑 删除</button>
+      <button class="btn-secondary" onclick="closeModal('opsModalOverlay')">取消</button>
+      <button class="btn-primary" onclick="saveOperation()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Snippet Modal -->
+<div class="modal-overlay" id="snippetModalOverlay">
+  <div class="modal">
+    <h3 class="modal-title" id="snippetModalTitle">新建代码片段</h3>
+    <input type="hidden" id="snippetEditId">
+    <div class="modal-field">
+      <label>标题</label>
+      <input type="text" id="snippetTitle" placeholder="片段名称...">
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>所属项目</label>
+        <select id="snippetProject"></select>
+      </div>
+      <div class="modal-field">
+        <label>语言</label>
+        <select id="snippetLanguage">
+          <option value="sql">SQL</option>
+          <option value="bash">Bash / Curl</option>
+          <option value="git">Git</option>
+          <option value="python">Python</option>
+          <option value="javascript">JavaScript</option>
+          <option value="json">JSON</option>
+          <option value="yaml">YAML</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label>代码</label>
+      <textarea id="snippetCode" rows="6" placeholder="粘贴代码..." style="font-family:var(--font-mono);"></textarea>
+    </div>
+    <div class="modal-field">
+      <label>描述</label>
+      <input type="text" id="snippetDescription" placeholder="用途说明...">
+    </div>
+    <div class="modal-field">
+      <label>标签 (逗号分隔)</label>
+      <input type="text" id="snippetTags" placeholder="testing, database">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-danger" id="snippetDeleteBtn" style="display:none;margin-right:auto;" onclick="deleteSnippet()">🗑 删除</button>
+      <button class="btn-secondary" onclick="closeModal('snippetModalOverlay')">取消</button>
+      <button class="btn-primary" onclick="saveSnippet()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="assets/js/projects.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
