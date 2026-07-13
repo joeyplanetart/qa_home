@@ -411,7 +411,7 @@ def project_stats() -> dict[str, dict[str, int]]:
     return {str(k): v for k, v in stats.items()}
 
 
-# ---------- Static files (本地开发用；Vercel 由 public/ CDN 提供) ----------
+# ---------- Static files ----------
 
 if (PUBLIC / "index.html").is_file():
     @app.get("/")
