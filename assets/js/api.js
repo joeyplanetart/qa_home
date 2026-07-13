@@ -11,6 +11,7 @@ let _cache = {
   operations: [],
   snippets: [],
   settings: { theme: 'light' },
+  projectStats: {},
 };
 
 async function apiRequest(method, path, body) {
@@ -46,6 +47,34 @@ async function loadAllData() {
   _cache.operations = operations;
   _cache.snippets = snippets;
   _cache.settings = settings;
+
+  try {
+    _cache.projectStats = await apiRequest('GET', '/projects/stats');
+  } catch (_) {
+    _cache.projectStats = computeProjectStatsLocally();
+  }
+}
+
+function computeProjectStatsLocally() {
+  const stats = {};
+  function bump(projectId, key) {
+    if (projectId === null || projectId === undefined) return;
+    const id = String(projectId);
+    if (!stats[id]) stats[id] = { memos: 0, ops: 0, snippets: 0 };
+    stats[id][key] += 1;
+  }
+  _cache.memos.forEach(m => bump(m.projectId, 'memos'));
+  _cache.operations.forEach(o => bump(o.projectId, 'ops'));
+  _cache.snippets.forEach(s => bump(s.projectId, 'snippets'));
+  return stats;
+}
+
+async function refreshProjectStats() {
+  try {
+    _cache.projectStats = await apiRequest('GET', '/projects/stats');
+  } catch (_) {
+    _cache.projectStats = computeProjectStatsLocally();
+  }
 }
 
 // ---------- Read ----------
@@ -56,6 +85,9 @@ function getChecklist() { return _cache.checklist; }
 function getOperations() { return _cache.operations; }
 function getSnippets() { return _cache.snippets; }
 function getSettings() { return _cache.settings; }
+function getProjectStatsMap() {
+  return _cache.projectStats || {};
+}
 
 // ---------- Settings ----------
 
@@ -70,6 +102,7 @@ async function saveSettings(settings) {
 async function createMemo(data) {
   const item = await apiRequest('POST', '/memos', data);
   _cache.memos.unshift(item);
+  await refreshProjectStats();
   return item;
 }
 
@@ -77,12 +110,14 @@ async function updateMemo(id, data) {
   const item = await apiRequest('PUT', `/memos/${id}`, data);
   const idx = _cache.memos.findIndex(m => m.id === id);
   if (idx >= 0) _cache.memos[idx] = item;
+  await refreshProjectStats();
   return item;
 }
 
 async function deleteMemoById(id) {
   await apiRequest('DELETE', `/memos/${id}`);
   _cache.memos = _cache.memos.filter(m => m.id !== id);
+  await refreshProjectStats();
 }
 
 // ---------- Links ----------
@@ -136,6 +171,7 @@ async function resetChecklistAll() {
 async function createOperation(data) {
   const item = await apiRequest('POST', '/operations', data);
   _cache.operations.push(item);
+  await refreshProjectStats();
   return item;
 }
 
@@ -143,12 +179,14 @@ async function updateOperation(id, data) {
   const item = await apiRequest('PUT', `/operations/${id}`, data);
   const idx = _cache.operations.findIndex(o => o.id === id);
   if (idx >= 0) _cache.operations[idx] = item;
+  await refreshProjectStats();
   return item;
 }
 
 async function deleteOperationById(id) {
   await apiRequest('DELETE', `/operations/${id}`);
   _cache.operations = _cache.operations.filter(o => o.id !== id);
+  await refreshProjectStats();
 }
 
 // ---------- Snippets ----------
@@ -156,6 +194,7 @@ async function deleteOperationById(id) {
 async function createSnippet(data) {
   const item = await apiRequest('POST', '/snippets', data);
   _cache.snippets.push(item);
+  await refreshProjectStats();
   return item;
 }
 
@@ -163,10 +202,12 @@ async function updateSnippet(id, data) {
   const item = await apiRequest('PUT', `/snippets/${id}`, data);
   const idx = _cache.snippets.findIndex(s => s.id === id);
   if (idx >= 0) _cache.snippets[idx] = item;
+  await refreshProjectStats();
   return item;
 }
 
 async function deleteSnippetById(id) {
   await apiRequest('DELETE', `/snippets/${id}`);
   _cache.snippets = _cache.snippets.filter(s => s.id !== id);
+  await refreshProjectStats();
 }

@@ -82,16 +82,32 @@ function projectTagHtml(projectId) {
   return `<span class="memo-project-tag">${icon} ${escapeHTML(label)}</span>`;
 }
 
+function normalizeProjectId(id) {
+  if (id === null || id === undefined || id === '') return null;
+  const n = Number(id);
+  return Number.isNaN(n) ? null : n;
+}
+
+function belongsToProject(itemProjectId, projectId) {
+  const itemPid = normalizeProjectId(itemProjectId);
+  const pid = normalizeProjectId(projectId);
+  return itemPid !== null && pid !== null && itemPid === pid;
+}
+
 function matchesProjectFilter(item) {
   if (currentProjectFilter === null) return true;
-  return item.projectId === currentProjectFilter || item.projectId === null || item.projectId === undefined;
+  return belongsToProject(item.projectId, currentProjectFilter);
 }
 
 function getProjectStats(projectId) {
-  const memos = getMemos().filter(m => m.projectId === projectId).length;
-  const ops = getOperations().filter(o => o.projectId === projectId).length;
-  const snippets = getSnippets().filter(s => s.projectId === projectId).length;
-  return { memos, ops, snippets, total: memos + ops + snippets };
+  const statsMap = getProjectStatsMap() || {};
+  const stats = statsMap[String(projectId)] || { memos: 0, ops: 0, snippets: 0 };
+  return {
+    memos: stats.memos || 0,
+    ops: stats.ops || 0,
+    snippets: stats.snippets || 0,
+    total: (stats.memos || 0) + (stats.ops || 0) + (stats.snippets || 0),
+  };
 }
 
 function setProjectFilter(projectId) {
@@ -338,55 +354,66 @@ async function resetChecklist() {
 // ========================================
 function renderProjects() {
   const container = $('projectsContainer');
-  const query = projectSearchQuery.toLowerCase();
+  if (!container) return;
 
-  let groups = PROJECT_GROUPS;
-  if (currentGroupFilter !== 'all') {
-    groups = groups.filter(g => g.id === currentGroupFilter);
-  }
+  try {
+    const query = projectSearchQuery.toLowerCase();
 
-  let html = '';
-  let hasResults = false;
-
-  groups.forEach(group => {
-    let projects = getProjectsByGroup(group.id);
-
-    if (query) {
-      projects = projects.filter(p =>
-        p.short_name.toLowerCase().includes(query) ||
-        p.domain.toLowerCase().includes(query) ||
-        String(p.id).includes(query)
-      );
+    let groups = PROJECT_GROUPS;
+    if (currentGroupFilter !== 'all') {
+      groups = groups.filter(g => g.id === currentGroupFilter);
     }
 
-    if (!projects.length) return;
-    hasResults = true;
+    let html = '';
+    let hasResults = false;
 
-    html += `
-      <div class="project-group">
-        <div class="project-group-header">
-          <span class="project-group-icon">${group.icon}</span>
-          <span class="project-group-title">${escapeHTML(group.name)}</span>
-          <span class="project-group-desc">${escapeHTML(group.description)} · ${projects.length} 个项目</span>
-        </div>
-        <div class="project-grid">
-          ${projects.map(p => renderProjectCard(p)).join('')}
-        </div>
-      </div>
-    `;
-  });
+    groups.forEach(group => {
+      let projects = getProjectsByGroup(group.id);
 
-  if (!hasResults) {
+      if (query) {
+        projects = projects.filter(p =>
+          p.short_name.toLowerCase().includes(query) ||
+          p.domain.toLowerCase().includes(query) ||
+          String(p.id).includes(query)
+        );
+      }
+
+      if (!projects.length) return;
+      hasResults = true;
+
+      html += `
+        <div class="project-group">
+          <div class="project-group-header">
+            <span class="project-group-icon">${group.icon}</span>
+            <span class="project-group-title">${escapeHTML(group.name)}</span>
+            <span class="project-group-desc">${escapeHTML(group.description)} · ${projects.length} 个项目</span>
+          </div>
+          <div class="project-grid">
+            ${projects.map(p => renderProjectCard(p)).join('')}
+          </div>
+        </div>
+      `;
+    });
+
+    if (!hasResults) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🔍</div>
+          <div class="empty-state-text">未找到匹配的项目</div>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = html;
+    updateProjectFilterUI();
+  } catch (e) {
+    console.error('renderProjects failed:', e);
     container.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state-icon">🔍</div>
-        <div class="empty-state-text">未找到匹配的项目</div>
+        <div class="empty-state-icon">⚠️</div>
+        <div class="empty-state-text">项目列表加载失败，请刷新页面</div>
       </div>`;
-    return;
   }
-
-  container.innerHTML = html;
-  updateProjectFilterUI();
 }
 
 function renderProjectCard(p) {
@@ -966,15 +993,16 @@ async function init() {
 
   try {
     await loadAllData();
-    initTheme();
-    renderQuickLinks();
-    renderChecklist();
-    renderAllContent();
-    updateProjectFilterUI();
   } catch (e) {
     toast('⚠️ 数据加载失败，请确认服务已启动');
     console.error(e);
   }
+
+  initTheme();
+  renderQuickLinks();
+  renderChecklist();
+  renderAllContent();
+  updateProjectFilterUI();
 }
 
 document.addEventListener('DOMContentLoaded', init);

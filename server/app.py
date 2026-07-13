@@ -385,6 +385,31 @@ def delete_snippet(snippet_id: str) -> dict:
     return {"ok": True}
 
 
+# ---------- Project Stats ----------
+
+@app.get("/api/projects/stats")
+def project_stats() -> dict[str, dict[str, int]]:
+    """按 project_id 统计各项目的备忘录、流程、片段数量（不含通用/跨项目）"""
+    stats: dict[int, dict[str, int]] = {}
+    queries = [
+        ("memos", "memos"),
+        ("operations", "ops"),
+        ("snippets", "snippets"),
+    ]
+    with get_conn() as conn:
+        for table, key in queries:
+            rows = conn.execute(
+                f"SELECT project_id, COUNT(*) AS cnt FROM {table} "
+                "WHERE project_id IS NOT NULL GROUP BY project_id"
+            ).fetchall()
+            for row in rows:
+                pid = row["project_id"]
+                if pid not in stats:
+                    stats[pid] = {"memos": 0, "ops": 0, "snippets": 0}
+                stats[pid][key] = row["cnt"]
+    return {str(k): v for k, v in stats.items()}
+
+
 # ---------- Static files ----------
 
 @app.get("/")
