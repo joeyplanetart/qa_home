@@ -1,6 +1,13 @@
 [project]
 name = "qa-home"
+version = "0.1.0"
+description = "QA Home — PlanetArt"
 requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+    "httpx==0.28.1",
+]
 
 [tool.vercel]
 entrypoint = "server.app:app"
