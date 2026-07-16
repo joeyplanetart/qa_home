@@ -7,7 +7,7 @@ const PROJECT_GROUPS = [
     id: 'planetart',
     name: 'PlanetArt 内部',
     icon: '🏢',
-    description: '内部管理、IPS 生产、直邮系统',
+    description: '内部管理、开发工具与运营系统',
   },
   {
     id: 'cafepress',
@@ -37,11 +37,10 @@ const PROJECT_GROUPS = [
 ];
 
 const PROJECTS = [
-  { id: 0,   short_name: 'ADMIN',    domain: 'admin.planetart.com',           group: 'planetart',   icon: '⚙️',  env: 'prod' },
-  { id: 99,  short_name: 'IPS',      domain: 'ips.planetart.com',             group: 'planetart',   icon: '🖨️',  env: 'prod' },
-  { id: 150, short_name: 'ISM',      domain: 'dm.planetart.com',              group: 'planetart',   icon: '✉️',  env: 'prod' },
-  { id: 151, short_name: 'Devtools', domain: 'devtools.planetart.com/deploy', group: 'planetart',   icon: '🔧',  env: 'prod' },
-  { id: 152, short_name: 'Cordial',  domain: 'admin.cordial.io',              group: 'planetart',   icon: '📧',  env: 'prod' },
+  { id: 0,   short_name: 'ADMIN',        domain: 'admin.planetart.com',                                                      group: 'planetart',   icon: '⚙️',  env: 'prod' },
+  { id: 151, short_name: 'Devtools',     domain: 'devtools.planetart.com/deploy',                                          group: 'planetart',   icon: '🔧',  env: 'prod' },
+  { id: 152, short_name: 'Cordial',      domain: 'admin.cordial.io',                                                       group: 'planetart',   icon: '📧',  env: 'prod' },
+  { id: 153, short_name: 'Overlay_tool', domain: 'admin-master.pre.planetart.com/design_templates/product_effects_tool.php', group: 'planetart',   icon: '🎭',  env: 'pre' },
 
   { id: 169, short_name: 'CPBUS',  domain: 'www.cafepress.com/business',             group: 'cafepress',   icon: '🇺🇸',  env: 'prod' },
   { id: 170, short_name: 'CAFUS',  domain: 'www.cafepress.com',     group: 'cafepress',   icon: '🔬',  env: 'Prod' },
