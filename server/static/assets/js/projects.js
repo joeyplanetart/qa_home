@@ -53,7 +53,6 @@ const PROJECTS = [
   { id: 3,   short_name: 'CW',     domain: 'www.canvasworld.com',           group: 'cards',       icon: '🖼️',  env: 'prod' },
 
   { id: 6,   short_name: 'MCC',    domain: 'www.mycustomcase.com',          group: 'customcase',  icon: '📱',  env: 'prod' },
-  { id: 13,  short_name: 'MCCBB',  domain: 'bestbuy.mycustomcase.com',      group: 'customcase',  icon: '🛒',  env: 'prod' },
 
   { id: 160, short_name: 'LLANE',  domain: 'www.legacylane.com',            group: 'gifts',       icon: '🛤️',  env: 'prod' },
   { id: 161, short_name: 'GIFTS',  domain: 'www.gifts.com',                 group: 'gifts',       icon: '🎁',  env: 'prod' },
