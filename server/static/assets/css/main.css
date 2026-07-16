@@ -638,9 +638,14 @@ input:focus, textarea:focus, select:focus {
   background: #3d1a1a;
 }
 
-.health-refresh-btn.loading {
+.health-refresh-btn.loading,
+.health-refresh-btn.auto-checking {
   opacity: 0.6;
   pointer-events: none;
+}
+
+.health-refresh-btn.auto-checking {
+  pointer-events: auto;
 }
 
 .project-card-actions {

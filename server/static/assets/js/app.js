@@ -486,37 +486,54 @@ function renderProjectHealth(p) {
 }
 
 let _healthCheckRunning = false;
+let _healthCheckTimer = null;
+const HEALTH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
-async function refreshProjectHealth() {
+function isProjectsTabActive() {
+  return document.getElementById('tab-projects')?.classList.contains('active');
+}
+
+async function refreshProjectHealth(silent = false) {
   const external = getExternalProjects();
   if (!external.length) {
-    toast('没有需要检查的外部项目');
+    if (!silent) toast('没有需要检查的外部项目');
     return;
   }
   if (_healthCheckRunning) return;
 
   _healthCheckRunning = true;
-  external.forEach(p => {
-    _healthCache[String(p.id)] = { status: 'checking' };
-  });
-  renderProjects();
+  if (!silent) {
+    external.forEach(p => {
+      _healthCache[String(p.id)] = { status: 'checking' };
+    });
+    renderProjects();
+  }
 
   const btn = document.querySelector('.health-refresh-btn');
-  if (btn) btn.classList.add('loading');
+  if (btn) btn.classList.add(silent ? 'auto-checking' : 'loading');
 
   try {
     await checkProjectsHealth(external);
-    renderProjects();
-    const healthy = external.filter(p => getProjectHealth(p.id)?.status === 'healthy').length;
-    toast(`🩺 健康检查完成：${healthy}/${external.length} 正常`);
+    if (isProjectsTabActive()) renderProjects();
+    if (!silent) {
+      const healthy = external.filter(p => getProjectHealth(p.id)?.status === 'healthy').length;
+      toast(`🩺 健康检查完成：${healthy}/${external.length} 正常`);
+    }
   } catch (e) {
-    external.forEach(p => delete _healthCache[String(p.id)]);
-    renderProjects();
-    toast('⚠️ 健康检查失败: ' + e.message);
+    if (!silent) {
+      external.forEach(p => delete _healthCache[String(p.id)]);
+      if (isProjectsTabActive()) renderProjects();
+      toast('⚠️ 健康检查失败: ' + e.message);
+    }
   } finally {
     _healthCheckRunning = false;
-    if (btn) btn.classList.remove('loading');
+    if (btn) btn.classList.remove('loading', 'auto-checking');
   }
+}
+
+function startHealthCheckInterval() {
+  if (_healthCheckTimer) clearInterval(_healthCheckTimer);
+  _healthCheckTimer = setInterval(() => refreshProjectHealth(true), HEALTH_CHECK_INTERVAL_MS);
 }
 
 // ========================================
@@ -1196,6 +1213,7 @@ async function init() {
   renderAllContent();
   updateProjectFilterUI();
   refreshProjectHealth();
+  startHealthCheckInterval();
 }
 
 document.addEventListener('DOMContentLoaded', init);
