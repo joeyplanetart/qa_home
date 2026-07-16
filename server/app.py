@@ -1,9 +1,11 @@
+import asyncio
 import json
 import time
 import uuid
 from pathlib import Path
 from typing import Any, Optional
 
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -95,6 +97,19 @@ class ToolIn(BaseModel):
     description: str = ""
     category: str = "utility"
     sortOrder: int = 0
+
+
+class HealthCheckItem(BaseModel):
+    id: int
+    url: str
+
+
+class HealthCheckRequest(BaseModel):
+    items: list[HealthCheckItem] = Field(default_factory=list)
+
+
+HEALTH_CHECK_TIMEOUT = 10.0
+HEALTH_USER_AGENT = "QA-Home-HealthCheck/1.0"
 
 
 # ---------- App ----------
@@ -442,6 +457,49 @@ def delete_tool(tool_id: str) -> dict:
         if cur.rowcount == 0:
             raise HTTPException(404, "Tool not found")
     return {"ok": True}
+
+
+# ---------- Health Check ----------
+
+async def _check_url_health(client: httpx.AsyncClient, item: HealthCheckItem) -> dict[str, Any]:
+    started = time.time()
+    try:
+        resp = await client.get(item.url)
+        latency_ms = int((time.time() - started) * 1000)
+        healthy = resp.status_code < 400
+        return {
+            "id": item.id,
+            "status": "healthy" if healthy else "unhealthy",
+            "statusCode": resp.status_code,
+            "latencyMs": latency_ms,
+        }
+    except Exception as exc:
+        latency_ms = int((time.time() - started) * 1000)
+        return {
+            "id": item.id,
+            "status": "unhealthy",
+            "statusCode": None,
+            "latencyMs": latency_ms,
+            "error": str(exc)[:120],
+        }
+
+
+@app.post("/api/health-check")
+async def health_check(body: HealthCheckRequest) -> dict[str, Any]:
+    if not body.items:
+        return {}
+    if len(body.items) > 50:
+        raise HTTPException(400, "Too many URLs to check")
+
+    headers = {"User-Agent": HEALTH_USER_AGENT}
+    async with httpx.AsyncClient(
+        timeout=HEALTH_CHECK_TIMEOUT,
+        follow_redirects=True,
+        headers=headers,
+    ) as client:
+        results = await asyncio.gather(*[_check_url_health(client, item) for item in body.items])
+
+    return {str(r["id"]): r for r in results}
 
 
 # ---------- Project Stats ----------

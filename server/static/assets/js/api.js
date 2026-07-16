@@ -235,3 +235,23 @@ async function deleteToolById(id) {
   await apiRequest('DELETE', `/tools/${id}`);
   _cache.tools = _cache.tools.filter(t => t.id !== id);
 }
+
+// ---------- Project Health ----------
+
+let _healthCache = {};
+
+function getExternalProjects() {
+  return PROJECTS.filter(p => p.group !== 'planetart');
+}
+
+function getProjectHealth(projectId) {
+  return _healthCache[String(projectId)] || null;
+}
+
+async function checkProjectsHealth(projects) {
+  const items = projects.map(p => ({ id: p.id, url: getProjectUrl(p) }));
+  if (!items.length) return {};
+  const result = await apiRequest('POST', '/health-check', { items });
+  _healthCache = { ..._healthCache, ...result };
+  return result;
+}

@@ -421,10 +421,11 @@ function renderProjectCard(p) {
   const stats = getProjectStats(p.id);
   const url = getProjectUrl(p);
   const selected = currentProjectFilter === p.id ? 'selected' : '';
+  const healthHtml = p.group !== 'planetart' ? renderProjectHealth(p) : '';
 
   return `
     <div class="project-card ${selected}" data-project-id="${p.id}" onclick="selectProjectFromCard(${p.id})">
-      <span class="project-env-badge ${p.env}">${p.env}</span>
+      <span class="project-env-badge ${p.env.toLowerCase()}">${p.env}</span>
       <div class="project-card-top">
         <div class="project-card-icon">${p.icon}</div>
         <div>
@@ -435,6 +436,7 @@ function renderProjectCard(p) {
       <div class="project-card-domain">
         <a href="${url}" target="_blank" onclick="event.stopPropagation()">${escapeHTML(p.domain)}</a>
       </div>
+      ${healthHtml}
       <div class="project-card-stats">
         <span class="project-stat ${stats.memos ? 'has-items' : ''}">📝 ${stats.memos}</span>
         <span class="project-stat ${stats.ops ? 'has-items' : ''}">⚙️ ${stats.ops}</span>
@@ -469,6 +471,52 @@ function filterProjectGroups(groupId) {
 function handleProjectSearch() {
   projectSearchQuery = $('projectSearch').value.trim();
   renderProjects();
+}
+
+function renderProjectHealth(p) {
+  const h = getProjectHealth(p.id);
+  if (!h || h.status === 'checking') {
+    return '<div class="project-health checking"><span class="health-dot"></span>检查中...</div>';
+  }
+  if (h.status === 'healthy') {
+    return `<div class="project-health healthy"><span class="health-dot"></span>正常 · HTTP ${h.statusCode} · ${h.latencyMs}ms</div>`;
+  }
+  const detail = h.error ? escapeHTML(h.error) : (h.statusCode ? `HTTP ${h.statusCode}` : '无法连接');
+  return `<div class="project-health unhealthy"><span class="health-dot"></span>异常 · ${detail}</div>`;
+}
+
+let _healthCheckRunning = false;
+
+async function refreshProjectHealth() {
+  const external = getExternalProjects();
+  if (!external.length) {
+    toast('没有需要检查的外部项目');
+    return;
+  }
+  if (_healthCheckRunning) return;
+
+  _healthCheckRunning = true;
+  external.forEach(p => {
+    _healthCache[String(p.id)] = { status: 'checking' };
+  });
+  renderProjects();
+
+  const btn = document.querySelector('.health-refresh-btn');
+  if (btn) btn.classList.add('loading');
+
+  try {
+    await checkProjectsHealth(external);
+    renderProjects();
+    const healthy = external.filter(p => getProjectHealth(p.id)?.status === 'healthy').length;
+    toast(`🩺 健康检查完成：${healthy}/${external.length} 正常`);
+  } catch (e) {
+    external.forEach(p => delete _healthCache[String(p.id)]);
+    renderProjects();
+    toast('⚠️ 健康检查失败: ' + e.message);
+  } finally {
+    _healthCheckRunning = false;
+    if (btn) btn.classList.remove('loading');
+  }
 }
 
 // ========================================
@@ -1089,6 +1137,9 @@ document.addEventListener('click', function (e) {
 function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + tab));
+  if (tab === 'projects' && !Object.keys(_healthCache).length) {
+    refreshProjectHealth();
+  }
 }
 
 function renderAllContent() {
@@ -1144,6 +1195,7 @@ async function init() {
   renderChecklist();
   renderAllContent();
   updateProjectFilterUI();
+  refreshProjectHealth();
 }
 
 document.addEventListener('DOMContentLoaded', init);

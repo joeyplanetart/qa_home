@@ -574,9 +574,74 @@ input:focus, textarea:focus, select:focus {
 
 .project-env-badge.prod { background: #d3f9d8; color: #2b8a3e; }
 .project-env-badge.staging { background: #fff3bf; color: #e67700; }
+.project-env-badge.pre { background: #e7f5ff; color: #1971c2; }
 
 [data-theme="dark"] .project-env-badge.prod { background: #1a3d24; color: #69db7c; }
 [data-theme="dark"] .project-env-badge.staging { background: #3d3a1a; color: #ffd43b; }
+[data-theme="dark"] .project-env-badge.pre { background: #1a2d3d; color: #74c0fc; }
+
+.project-health {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.project-health.healthy {
+  color: #2b8a3e;
+  background: #d3f9d8;
+}
+
+.project-health.healthy .health-dot { background: #40c057; }
+
+.project-health.unhealthy {
+  color: #c92a2a;
+  background: #ffe3e3;
+}
+
+.project-health.unhealthy .health-dot { background: #fa5252; }
+
+.project-health.checking {
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+}
+
+.project-health.checking .health-dot {
+  background: var(--text-muted);
+  animation: health-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes health-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+[data-theme="dark"] .project-health.healthy {
+  color: #69db7c;
+  background: #1a3d24;
+}
+
+[data-theme="dark"] .project-health.unhealthy {
+  color: #ff8787;
+  background: #3d1a1a;
+}
+
+.health-refresh-btn.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
 
 .project-card-actions {
   display: flex;
