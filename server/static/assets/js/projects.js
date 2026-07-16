@@ -41,6 +41,7 @@ const PROJECTS = [
   { id: 99,  short_name: 'IPS',      domain: 'ips.planetart.com',             group: 'planetart',   icon: '🖨️',  env: 'prod' },
   { id: 150, short_name: 'ISM',      domain: 'dm.planetart.com',              group: 'planetart',   icon: '✉️',  env: 'prod' },
   { id: 151, short_name: 'Devtools', domain: 'devtools.planetart.com/deploy', group: 'planetart',   icon: '🔧',  env: 'prod' },
+  { id: 152, short_name: 'Cordial',  domain: 'admin.cordial.io',              group: 'planetart',   icon: '📧',  env: 'prod' },
 
   { id: 169, short_name: 'CPBUS',  domain: 'www.cafepress.com/business',             group: 'cafepress',   icon: '🇺🇸',  env: 'prod' },
   { id: 170, short_name: 'CAFUS',  domain: 'www.cafepress.com',     group: 'cafepress',   icon: '🔬',  env: 'Prod' },
