@@ -111,8 +111,22 @@ class HealthCheckRequest(BaseModel):
     items: list[HealthCheckItem] = Field(default_factory=list)
 
 
+class AutomationRunConfig(BaseModel):
+    headed: bool = False
+    browser: str = "chromium"
+    viewportWidth: int = Field(default=1280, ge=320, le=3840)
+    viewportHeight: int = Field(default=720, ge=240, le=2160)
+    slowMo: int = Field(default=0, ge=0, le=5000)
+    timeout: int = Field(default=30000, ge=1000, le=120000)
+    device: str = ""
+    video: str = "off"
+    tracing: str = "off"
+    locale: str = "en-US"
+
+
 class AutomationRunRequest(BaseModel):
     suite: str = "cafepress"
+    config: AutomationRunConfig = Field(default_factory=AutomationRunConfig)
 
 
 HEALTH_CHECK_TIMEOUT = 10.0
@@ -638,19 +652,30 @@ def automation_screenshot(run_id: str, filename: str) -> FileResponse:
     return FileResponse(path, media_type="image/png")
 
 
+@app.get("/api/automation/run-config")
+def automation_run_config() -> dict[str, Any]:
+    return automation_runner.get_default_run_config()
+
+
 @app.post("/api/automation/run", status_code=202)
 def automation_start_run(body: AutomationRunRequest, background_tasks: BackgroundTasks) -> dict[str, Any]:
     if not automation_runner.can_run():
         raise HTTPException(503, automation_runner.get_status()["message"])
     if automation_runner.is_running():
         raise HTTPException(409, "已有测试任务在运行")
+    run_config = body.config.model_dump()
     try:
-        run = automation_runner.create_run(body.suite)
+        run = automation_runner.create_run(body.suite, run_config)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(503, str(exc)) from exc
-    background_tasks.add_task(automation_runner.execute_run, run["runId"], body.suite)
+    background_tasks.add_task(
+        automation_runner.execute_run,
+        run["runId"],
+        body.suite,
+        run_config,
+    )
     return run
 
 

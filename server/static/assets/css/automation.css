@@ -161,6 +161,166 @@
   cursor: not-allowed;
 }
 
+.auto-config {
+  margin-top: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  overflow: hidden;
+}
+
+.auto-config-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auto-config-toggle:hover {
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+
+.auto-config-chevron {
+  font-size: 10px;
+  transition: transform var(--transition);
+}
+
+.auto-config.collapsed .auto-config-chevron {
+  transform: rotate(-90deg);
+}
+
+.auto-config.collapsed .auto-config-body {
+  display: none;
+}
+
+.auto-config-body {
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auto-config-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auto-config-row.auto-config-inline {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auto-config-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.auto-config-select,
+.auto-config-input {
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.auto-config-input-wide {
+  max-width: 120px;
+}
+
+.auto-config-dimensions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.auto-config-dimensions .auto-config-input {
+  width: 72px;
+  padding: 6px 8px;
+}
+
+.auto-config-dimensions span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.auto-config-segmented {
+  display: flex;
+  gap: 6px;
+}
+
+.auto-config-chip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 7px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.auto-config-chip:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.auto-config-chip input {
+  display: none;
+}
+
+.auto-config-reset {
+  margin-top: 2px;
+  padding: 7px;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auto-config-reset:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.auto-run-config-badge {
+  margin: 0 16px 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.auto-run-config-badge strong {
+  color: var(--text-primary);
+}
+
 .auto-main {
   display: flex;
   flex-direction: column;

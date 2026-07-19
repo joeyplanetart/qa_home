@@ -104,7 +104,8 @@ CREATE TABLE IF NOT EXISTS automation_runs (
     finished_at  INTEGER,
     log_summary  TEXT NOT NULL DEFAULT '',
     log_text     TEXT NOT NULL DEFAULT '',
-    report_path  TEXT NOT NULL DEFAULT ''
+    report_path  TEXT NOT NULL DEFAULT '',
+    config_json  TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS automation_results (
@@ -150,9 +151,19 @@ def get_conn() -> Union[sqlite3.Connection, TursoConnection]:
     return conn
 
 
+def _migrate_db(conn) -> None:
+    rows = conn.execute("PRAGMA table_info(automation_runs)").fetchall()
+    cols = {row[1] for row in rows}
+    if "config_json" not in cols:
+        conn.execute(
+            "ALTER TABLE automation_runs ADD COLUMN config_json TEXT NOT NULL DEFAULT ''"
+        )
+
+
 def init_db() -> None:
     with get_conn() as conn:
         conn.executescript(SCHEMA)
+        _migrate_db(conn)
 
 
 def is_seeded() -> bool:

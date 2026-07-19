@@ -24,7 +24,96 @@ SUITE_LABELS = {
     "sti": "STI 冒烟",
 }
 
+DEFAULT_RUN_CONFIG: dict[str, Any] = {
+    "headed": False,
+    "browser": "chromium",
+    "viewportWidth": 1280,
+    "viewportHeight": 720,
+    "slowMo": 0,
+    "timeout": 30000,
+    "device": "",
+    "video": "off",
+    "tracing": "off",
+    "locale": "en-US",
+}
+
+VALID_BROWSERS = {"chromium", "firefox", "webkit"}
+VALID_CAPTURE_MODES = {"off", "on", "retain-on-failure"}
+
 _running: Optional[str] = None
+MAX_LOG_CHARS = 120_000
+
+
+def get_default_run_config() -> dict[str, Any]:
+    return dict(DEFAULT_RUN_CONFIG)
+
+
+def normalize_run_config(config: Optional[dict[str, Any]]) -> dict[str, Any]:
+    merged = dict(DEFAULT_RUN_CONFIG)
+    if not config:
+        return merged
+
+    if "headed" in config:
+        merged["headed"] = bool(config["headed"])
+    if "browser" in config and config["browser"] in VALID_BROWSERS:
+        merged["browser"] = config["browser"]
+    if "viewportWidth" in config:
+        merged["viewportWidth"] = max(320, min(3840, int(config["viewportWidth"])))
+    if "viewportHeight" in config:
+        merged["viewportHeight"] = max(240, min(2160, int(config["viewportHeight"])))
+    if "slowMo" in config:
+        merged["slowMo"] = max(0, min(5000, int(config["slowMo"])))
+    if "timeout" in config:
+        merged["timeout"] = max(1000, min(120000, int(config["timeout"])))
+    if "device" in config:
+        merged["device"] = str(config["device"] or "").strip()
+    if "video" in config and config["video"] in VALID_CAPTURE_MODES:
+        merged["video"] = config["video"]
+    if "tracing" in config and config["tracing"] in VALID_CAPTURE_MODES:
+        merged["tracing"] = config["tracing"]
+    if "locale" in config:
+        merged["locale"] = str(config["locale"] or "en-US").strip() or "en-US"
+    return merged
+
+
+def _parse_run_config(row: Any) -> dict[str, Any]:
+    raw = ""
+    try:
+        raw = row["config_json"] or ""
+    except (KeyError, IndexError, TypeError):
+        pass
+    if not raw:
+        return dict(DEFAULT_RUN_CONFIG)
+    try:
+        return normalize_run_config(json.loads(raw))
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return dict(DEFAULT_RUN_CONFIG)
+
+
+def _apply_run_config(cmd: list[str], env: dict[str, str], config: dict[str, Any]) -> None:
+    cmd.extend(["--browser", config["browser"]])
+
+    if config["headed"]:
+        cmd.append("--headed")
+
+    if config["slowMo"] > 0:
+        cmd.extend(["--slowmo", str(config["slowMo"])])
+
+    if config["device"]:
+        cmd.extend(["--device", config["device"]])
+    else:
+        env["AUTOMATION_VIEWPORT_WIDTH"] = str(config["viewportWidth"])
+        env["AUTOMATION_VIEWPORT_HEIGHT"] = str(config["viewportHeight"])
+
+    if config["video"] != "off":
+        cmd.extend(["--video", config["video"]])
+
+    if config["tracing"] != "off":
+        cmd.extend(["--tracing", config["tracing"]])
+
+    env["AUTOMATION_TIMEOUT"] = str(config["timeout"])
+    if config["locale"]:
+        env["AUTOMATION_LOCALE"] = config["locale"]
 MAX_LOG_CHARS = 120_000
 
 
@@ -290,6 +379,7 @@ def row_to_run(row: Any) -> dict[str, Any]:
         "logSummary": row["log_summary"],
         "hasReport": bool(row["report_path"]),
         "hasLog": bool(row["log_text"]),
+        "config": _parse_run_config(row),
     }
 
 
@@ -366,13 +456,14 @@ def _resolve_suite_path(suite: str) -> Path:
     return path
 
 
-def create_run(suite: str) -> dict[str, Any]:
+def create_run(suite: str, config: Optional[dict[str, Any]] = None) -> dict[str, Any]:
     global _running
     if not can_run():
         raise RuntimeError("当前环境不可运行自动化测试")
     if is_running():
         raise RuntimeError("已有测试任务在运行，请稍后再试")
 
+    run_config = normalize_run_config(config)
     suite_path = _resolve_suite_path(suite)
     meta = _load_suite_meta(suite) if suite != "all" else {
         "name": "全部套件",
@@ -385,14 +476,14 @@ def create_run(suite: str) -> dict[str, Any]:
         conn.execute(
             """INSERT INTO automation_runs
                (id, suite, suite_name, status, total, passed, failed, skipped,
-                duration_ms, started_at, finished_at, log_summary, log_text, report_path)
-               VALUES (?,?,?,?,0,0,0,0,0,?,NULL,'','','')""",
-            (run_id, suite, meta.get("name", suite), "running", started),
+                duration_ms, started_at, finished_at, log_summary, log_text, report_path, config_json)
+               VALUES (?,?,?,?,0,0,0,0,0,?,NULL,'','','',?)""",
+            (run_id, suite, meta.get("name", suite), "running", started, json.dumps(run_config)),
         )
         conn.commit()
 
     _running = run_id
-    return {"runId": run_id, "status": "running", "suite": suite}
+    return {"runId": run_id, "status": "running", "suite": suite, "config": run_config}
 
 
 def _parse_junit(junit_path: Path, screenshots_dir: Path) -> tuple[list[dict], dict]:
@@ -478,9 +569,10 @@ def _finish_run_error(run_id: str, started: int, message: str) -> None:
         conn.commit()
 
 
-def execute_run(run_id: str, suite: str) -> None:
+def execute_run(run_id: str, suite: str, config: Optional[dict[str, Any]] = None) -> None:
     global _running
     started = _now()
+    run_config = normalize_run_config(config)
     run_dir = REPORTS_DIR / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     junit_path = run_dir / "junit.xml"
@@ -515,6 +607,7 @@ def execute_run(run_id: str, suite: str) -> None:
 
     env = os.environ.copy()
     env["AUTOMATION_SCREENSHOTS_DIR"] = str(screenshots_dir)
+    _apply_run_config(cmd, env, run_config)
 
     log_text = ""
     exit_code = 1

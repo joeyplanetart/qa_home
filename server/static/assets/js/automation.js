@@ -2,6 +2,20 @@
  * UI 自动化管理页
  */
 const API = '/api/automation';
+const CONFIG_STORAGE_KEY = 'qa-automation-run-config';
+
+const DEFAULT_RUN_CONFIG = {
+  headed: false,
+  browser: 'chromium',
+  viewportWidth: 1280,
+  viewportHeight: 720,
+  slowMo: 0,
+  timeout: 30000,
+  device: '',
+  video: 'off',
+  tracing: 'off',
+  locale: 'en-US',
+};
 
 let _suites = [];
 let _runs = [];
@@ -41,6 +55,124 @@ async function api(method, path, body) {
   }
   if (res.status === 204) return null;
   return res.json();
+}
+
+function formatConfigSummary(config) {
+  if (!config) return '';
+  const parts = [];
+  parts.push(config.headed ? '有头' : '无头');
+  parts.push(config.browser || 'chromium');
+  if (config.device) {
+    parts.push(config.device);
+  } else {
+    parts.push(`${config.viewportWidth || 1280}×${config.viewportHeight || 720}`);
+  }
+  if (config.slowMo > 0) parts.push(`慢动作 ${config.slowMo}ms`);
+  if (config.video && config.video !== 'off') parts.push(`录像:${config.video}`);
+  if (config.tracing && config.tracing !== 'off') parts.push(`trace:${config.tracing}`);
+  return parts.join(' · ');
+}
+
+function loadRunConfig() {
+  try {
+    const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
+    if (saved) return { ...DEFAULT_RUN_CONFIG, ...JSON.parse(saved) };
+  } catch (_) {}
+  return { ...DEFAULT_RUN_CONFIG };
+}
+
+function saveRunConfig(config) {
+  localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+}
+
+function getRunConfigFromUI() {
+  const headed = document.querySelector('input[name="cfgHeaded"]:checked')?.value === '1';
+  return {
+    headed,
+    browser: $('cfgBrowser')?.value || 'chromium',
+    viewportWidth: parseInt($('cfgViewportWidth')?.value, 10) || 1280,
+    viewportHeight: parseInt($('cfgViewportHeight')?.value, 10) || 720,
+    slowMo: parseInt($('cfgSlowMo')?.value, 10) || 0,
+    timeout: parseInt($('cfgTimeout')?.value, 10) || 30000,
+    device: $('cfgDevice')?.value || '',
+    video: $('cfgVideo')?.value || 'off',
+    tracing: $('cfgTracing')?.value || 'off',
+    locale: $('cfgLocale')?.value || 'en-US',
+  };
+}
+
+function applyRunConfigToUI(config) {
+  const cfg = { ...DEFAULT_RUN_CONFIG, ...config };
+  document.querySelectorAll('input[name="cfgHeaded"]').forEach(el => {
+    el.checked = el.value === (cfg.headed ? '1' : '0');
+  });
+  if ($('cfgBrowser')) $('cfgBrowser').value = cfg.browser;
+  if ($('cfgViewportWidth')) $('cfgViewportWidth').value = cfg.viewportWidth;
+  if ($('cfgViewportHeight')) $('cfgViewportHeight').value = cfg.viewportHeight;
+  if ($('cfgSlowMo')) $('cfgSlowMo').value = cfg.slowMo;
+  if ($('cfgTimeout')) $('cfgTimeout').value = cfg.timeout;
+  if ($('cfgDevice')) $('cfgDevice').value = cfg.device || '';
+  if ($('cfgVideo')) $('cfgVideo').value = cfg.video;
+  if ($('cfgTracing')) $('cfgTracing').value = cfg.tracing;
+  if ($('cfgLocale')) $('cfgLocale').value = cfg.locale;
+  syncViewportPreset();
+  onDeviceChange(false);
+}
+
+function syncViewportPreset() {
+  const w = parseInt($('cfgViewportWidth')?.value, 10);
+  const h = parseInt($('cfgViewportHeight')?.value, 10);
+  const preset = `${w}x${h}`;
+  const select = $('cfgViewportPreset');
+  if (!select) return;
+  const match = Array.from(select.options).find(opt => opt.value === preset);
+  select.value = match ? preset : 'custom';
+}
+
+function applyViewportPreset() {
+  const preset = $('cfgViewportPreset')?.value;
+  if (!preset || preset === 'custom') return;
+  const [w, h] = preset.split('x').map(Number);
+  if ($('cfgViewportWidth')) $('cfgViewportWidth').value = w;
+  if ($('cfgViewportHeight')) $('cfgViewportHeight').value = h;
+  if ($('cfgDevice')) $('cfgDevice').value = '';
+  onDeviceChange(false);
+  saveRunConfig(getRunConfigFromUI());
+}
+
+function onDeviceChange(save = true) {
+  const device = $('cfgDevice')?.value;
+  const customRow = $('cfgViewportCustom');
+  const presetSelect = $('cfgViewportPreset');
+  const disabled = Boolean(device);
+  if (customRow) customRow.style.opacity = disabled ? '0.45' : '1';
+  if (presetSelect) presetSelect.disabled = disabled;
+  if ($('cfgViewportWidth')) $('cfgViewportWidth').disabled = disabled;
+  if ($('cfgViewportHeight')) $('cfgViewportHeight').disabled = disabled;
+  if (save) saveRunConfig(getRunConfigFromUI());
+}
+
+function toggleRunConfig() {
+  $('runConfigPanel')?.classList.toggle('collapsed');
+}
+
+function resetRunConfig() {
+  applyRunConfigToUI(DEFAULT_RUN_CONFIG);
+  saveRunConfig(DEFAULT_RUN_CONFIG);
+  toast('已恢复默认运行配置', 'info');
+}
+
+function bindRunConfigEvents() {
+  const panel = $('runConfigPanel');
+  if (!panel) return;
+  panel.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('change', () => {
+      if (el.id === 'cfgViewportWidth' || el.id === 'cfgViewportHeight') {
+        syncViewportPreset();
+      }
+      saveRunConfig(getRunConfigFromUI());
+    });
+  });
 }
 
 function formatTime(ts) {
@@ -151,6 +283,7 @@ function renderHistory() {
       <div class="auto-history-left">
         <div class="auto-history-title">${escapeHtml(r.suiteName || r.suite)}</div>
         <div class="auto-history-meta">${formatTime(r.startedAt)} · ${statusLabel(r.status)} · ${formatDuration(r.durationMs)}</div>
+        ${r.config ? `<div class="auto-history-meta">${escapeHtml(formatConfigSummary(r.config))}</div>` : ''}
       </div>
       <div class="auto-history-stats">
         <span style="color:var(--success)">${r.passed}</span> /
@@ -177,12 +310,23 @@ async function renderRunDetail() {
 
   const run = await api('GET', `/runs/${_selectedRunId}`);
 
+  const configSummary = formatConfigSummary(run.config);
   summaryEl.innerHTML = `
     <div class="auto-stat-card"><div class="auto-stat-value">${run.total}</div><div class="auto-stat-label">总计</div></div>
     <div class="auto-stat-card passed"><div class="auto-stat-value">${run.passed}</div><div class="auto-stat-label">通过</div></div>
     <div class="auto-stat-card failed"><div class="auto-stat-value">${run.failed}</div><div class="auto-stat-label">失败</div></div>
     <div class="auto-stat-card skipped"><div class="auto-stat-value">${run.skipped}</div><div class="auto-stat-label">跳过</div></div>
   `;
+
+  const configBadge = $('runConfigBadge');
+  if (configBadge) {
+    if (configSummary) {
+      configBadge.style.display = 'block';
+      configBadge.innerHTML = `<strong>运行配置</strong> ${escapeHtml(configSummary)}`;
+    } else {
+      configBadge.style.display = 'none';
+    }
+  }
 
   if (!run.results || !run.results.length) {
     resultsEl.innerHTML = run.status === 'running'
@@ -358,7 +502,9 @@ async function selectRun(id) {
 
 async function runSelectedSuite() {
   try {
-    const result = await api('POST', '/run', { suite: _selectedSuite });
+    const config = getRunConfigFromUI();
+    saveRunConfig(config);
+    const result = await api('POST', '/run', { suite: _selectedSuite, config });
     _selectedRunId = result.runId;
     toast(`已开始运行: ${_selectedSuite}`, 'success');
     await loadRuns();
@@ -372,7 +518,9 @@ async function runSelectedSuite() {
 
 async function runAllSuites() {
   try {
-    const result = await api('POST', '/run', { suite: 'all' });
+    const config = getRunConfigFromUI();
+    saveRunConfig(config);
+    const result = await api('POST', '/run', { suite: 'all', config });
     _selectedRunId = result.runId;
     toast('已开始运行全部套件', 'success');
     await loadRuns();
@@ -451,6 +599,8 @@ function toggleTheme() {
 
 async function init() {
   initTheme();
+  applyRunConfigToUI(loadRunConfig());
+  bindRunConfigEvents();
   try {
     await Promise.all([loadStatus(), loadSuites(), loadRuns()]);
     await renderRunDetail();
@@ -466,5 +616,9 @@ window.runAllSuites = runAllSuites;
 window.switchPanel = switchPanel;
 window.toggleTheme = toggleTheme;
 window.viewTestFile = viewTestFile;
+window.toggleRunConfig = toggleRunConfig;
+window.resetRunConfig = resetRunConfig;
+window.applyViewportPreset = applyViewportPreset;
+window.onDeviceChange = onDeviceChange;
 
 document.addEventListener('DOMContentLoaded', init);

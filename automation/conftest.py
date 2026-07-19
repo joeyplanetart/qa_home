@@ -5,9 +5,33 @@ from pathlib import Path
 import pytest
 
 
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.environ.get(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
 @pytest.fixture(scope="session")
 def browser_context_args():
-    return {"viewport": {"width": 1280, "height": 720}}
+    ctx = {
+        "viewport": {
+            "width": _env_int("AUTOMATION_VIEWPORT_WIDTH", 1280),
+            "height": _env_int("AUTOMATION_VIEWPORT_HEIGHT", 720),
+        },
+    }
+    locale = os.environ.get("AUTOMATION_LOCALE", "").strip()
+    if locale:
+        ctx["locale"] = locale
+    return ctx
+
+
+@pytest.fixture
+def page(page):
+    timeout = _env_int("AUTOMATION_TIMEOUT", 30000)
+    page.set_default_timeout(timeout)
+    page.set_default_navigation_timeout(timeout)
+    return page
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)

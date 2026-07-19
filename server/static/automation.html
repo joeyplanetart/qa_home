@@ -38,6 +38,94 @@
     <aside class="auto-sidebar">
       <div class="auto-sidebar-title">测试套件</div>
       <div id="suiteList"></div>
+
+      <div class="auto-config" id="runConfigPanel">
+        <button type="button" class="auto-config-toggle" id="configToggle" onclick="toggleRunConfig()">
+          <span>⚙️ 运行配置</span>
+          <span class="auto-config-chevron" id="configChevron">▼</span>
+        </button>
+        <div class="auto-config-body" id="configBody">
+          <div class="auto-config-row">
+            <label class="auto-config-label">浏览器模式</label>
+            <div class="auto-config-segmented">
+              <label class="auto-config-chip"><input type="radio" name="cfgHeaded" value="0" checked> 无头</label>
+              <label class="auto-config-chip"><input type="radio" name="cfgHeaded" value="1"> 有头</label>
+            </div>
+          </div>
+          <div class="auto-config-row">
+            <label class="auto-config-label" for="cfgBrowser">浏览器</label>
+            <select class="auto-config-select" id="cfgBrowser">
+              <option value="chromium">Chromium</option>
+              <option value="firefox">Firefox</option>
+              <option value="webkit">WebKit (Safari)</option>
+            </select>
+          </div>
+          <div class="auto-config-row">
+            <label class="auto-config-label" for="cfgViewportPreset">视口</label>
+            <select class="auto-config-select" id="cfgViewportPreset" onchange="applyViewportPreset()">
+              <option value="1280x720">Desktop 1280×720</option>
+              <option value="1366x768">Laptop 1366×768</option>
+              <option value="1920x1080">Full HD 1920×1080</option>
+              <option value="375x812">Mobile 375×812</option>
+              <option value="custom">自定义</option>
+            </select>
+          </div>
+          <div class="auto-config-row auto-config-inline" id="cfgViewportCustom">
+            <label class="auto-config-label">宽高</label>
+            <div class="auto-config-dimensions">
+              <input type="number" class="auto-config-input" id="cfgViewportWidth" min="320" max="3840" value="1280">
+              <span>×</span>
+              <input type="number" class="auto-config-input" id="cfgViewportHeight" min="240" max="2160" value="720">
+            </div>
+          </div>
+          <div class="auto-config-row">
+            <label class="auto-config-label" for="cfgDevice">设备模拟</label>
+            <select class="auto-config-select" id="cfgDevice" onchange="onDeviceChange()">
+              <option value="">不模拟（使用视口）</option>
+              <option value="iPhone 13">iPhone 13</option>
+              <option value="iPhone 13 Pro">iPhone 13 Pro</option>
+              <option value="Pixel 5">Pixel 5</option>
+              <option value="Galaxy S9+">Galaxy S9+</option>
+              <option value="iPad Pro 11">iPad Pro 11</option>
+            </select>
+          </div>
+          <div class="auto-config-row">
+            <label class="auto-config-label" for="cfgSlowMo">慢动作 (ms)</label>
+            <input type="number" class="auto-config-input auto-config-input-wide" id="cfgSlowMo" min="0" max="5000" step="100" value="0">
+          </div>
+          <div class="auto-config-row">
+            <label class="auto-config-label" for="cfgTimeout">超时 (ms)</label>
+            <input type="number" class="auto-config-input auto-config-input-wide" id="cfgTimeout" min="1000" max="120000" step="1000" value="30000">
+          </div>
+          <div class="auto-config-row">
+            <label class="auto-config-label" for="cfgLocale">语言区域</label>
+            <select class="auto-config-select" id="cfgLocale">
+              <option value="en-US">en-US</option>
+              <option value="zh-CN">zh-CN</option>
+              <option value="ja-JP">ja-JP</option>
+              <option value="de-DE">de-DE</option>
+            </select>
+          </div>
+          <div class="auto-config-row">
+            <label class="auto-config-label" for="cfgVideo">录像</label>
+            <select class="auto-config-select" id="cfgVideo">
+              <option value="off">关闭</option>
+              <option value="retain-on-failure">失败时保留</option>
+              <option value="on">始终录制</option>
+            </select>
+          </div>
+          <div class="auto-config-row">
+            <label class="auto-config-label" for="cfgTracing">Trace</label>
+            <select class="auto-config-select" id="cfgTracing">
+              <option value="off">关闭</option>
+              <option value="retain-on-failure">失败时保留</option>
+              <option value="on">始终开启</option>
+            </select>
+          </div>
+          <button type="button" class="auto-config-reset" onclick="resetRunConfig()">恢复默认</button>
+        </div>
+      </div>
+
       <button class="auto-run-btn" id="runSelectedBtn" onclick="runSelectedSuite()">▶ 运行选中套件</button>
       <button class="auto-run-btn" style="margin-top:8px;background:var(--bg-tertiary);color:var(--text-secondary);" onclick="runAllSuites()">▶ 运行全部</button>
     </aside>
@@ -65,6 +153,7 @@
 
       <div class="auto-panel active" id="panel-results">
         <div class="auto-summary" id="runSummary"></div>
+        <div class="auto-run-config-badge" id="runConfigBadge" style="display:none;"></div>
         <div class="auto-result-list" id="resultsList">
           <div class="auto-empty">
             <div class="auto-empty-icon">▶️</div>
