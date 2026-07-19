@@ -351,6 +351,81 @@ async function resetChecklist() {
 }
 
 // ========================================
+//  GitHub Top10
+// ========================================
+let githubPeriod = 'weekly';
+
+function switchGithubPeriod(period) {
+  githubPeriod = period;
+  _cache.githubPeriod = period;
+  document.querySelectorAll('.github-period-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.period === period);
+  });
+  renderGithubTop10();
+}
+
+async function refreshGithubTop10() {
+  const btn = document.querySelector('.github-refresh-btn');
+  if (btn) btn.textContent = '…';
+  try {
+    await refreshGithubTop10Api();
+    renderGithubTop10();
+    toast('✅ GitHub Top10 已更新');
+  } catch (e) {
+    toast('⚠️ 刷新失败: ' + e.message);
+  } finally {
+    if (btn) btn.textContent = '↻';
+  }
+}
+
+function renderGithubTop10() {
+  const list = $('githubTop10List');
+  const meta = $('githubTop10Meta');
+  if (!list) return;
+
+  const data = getGithubTop10(githubPeriod);
+  const items = data.items || [];
+
+  if (meta) {
+    meta.textContent = data.fetchedAt
+      ? `更新于 ${timeAgo(data.fetchedAt)}`
+      : '等待首次抓取…';
+  }
+
+  if (!items.length) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px;">暂无数据，点击 ↻ 刷新</div>';
+    return;
+  }
+
+  list.innerHTML = `<div class="github-top10-list">${items.slice(0, 10).map(repo => `
+    <a class="github-repo-item" href="${escapeHTML(repo.url)}" target="_blank" rel="noopener noreferrer" title="${escapeHTML((repo.description ? repo.description + ' — ' : '') + repo.fullName)}">
+      <span class="github-repo-rank">${repo.rank}</span>
+      <div class="github-repo-body">
+        <div class="github-repo-name">${escapeHTML(repo.fullName)}</div>
+        <div class="github-repo-meta">
+          ${repo.language ? `<span>${escapeHTML(repo.language)}</span>` : ''}
+          ${repo.stars ? `<span>⭐${formatStars(repo.stars)}</span>` : ''}
+        </div>
+      </div>
+    </a>
+  `).join('')}</div>`;
+}
+
+function formatStars(n) {
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return String(n);
+}
+
+async function initGithubTop10() {
+  try {
+    await loadAllGithubTop10(false);
+  } catch (e) {
+    console.error('GitHub Top10 load failed:', e);
+  }
+  renderGithubTop10();
+}
+
+// ========================================
 //  Projects Tab
 // ========================================
 function renderProjects() {
@@ -1214,6 +1289,7 @@ async function init() {
   updateProjectFilterUI();
   refreshProjectHealth();
   startHealthCheckInterval();
+  initGithubTop10();
 }
 
 document.addEventListener('DOMContentLoaded', init);

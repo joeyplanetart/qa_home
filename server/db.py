@@ -72,6 +72,19 @@ CREATE TABLE IF NOT EXISTS tools (
     sort_order  INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS github_top10 (
+    period       TEXT NOT NULL,
+    rank_num     INTEGER NOT NULL,
+    full_name    TEXT NOT NULL,
+    description  TEXT NOT NULL DEFAULT '',
+    url          TEXT NOT NULL,
+    language     TEXT DEFAULT '',
+    stars        INTEGER NOT NULL DEFAULT 0,
+    stars_delta  TEXT NOT NULL DEFAULT '',
+    fetched_at   INTEGER NOT NULL,
+    PRIMARY KEY (period, rank_num)
+);
+
 CREATE TABLE IF NOT EXISTS meta (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL

@@ -5,5 +5,11 @@
       "maxDuration": 30,
       "includeFiles": "server/static/**"
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/github-top10",
+      "schedule": "0 1 * * *"
+    }
+  ]
 }

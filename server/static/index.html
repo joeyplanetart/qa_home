@@ -41,6 +41,20 @@
       <div id="checklistItems"></div>
       <button class="checklist-reset" onclick="resetChecklist()">↺ 全部重置</button>
     </div>
+
+    <!-- GitHub Top10 -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-header">
+        <span class="sidebar-section-title">⭐ GitHub Top10</span>
+        <button class="btn-xs github-refresh-btn" onclick="refreshGithubTop10()" title="立即刷新">↻</button>
+      </div>
+      <div class="github-period-toggle">
+        <button class="github-period-btn active" data-period="weekly" onclick="switchGithubPeriod('weekly')">本周</button>
+        <button class="github-period-btn" data-period="monthly" onclick="switchGithubPeriod('monthly')">本月</button>
+      </div>
+      <div class="github-top10-meta" id="githubTop10Meta"></div>
+      <div id="githubTop10List"></div>
+    </div>
   </aside>
 
   <!-- Main Content -->

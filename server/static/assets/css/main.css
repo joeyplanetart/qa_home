@@ -380,6 +380,118 @@ input:focus, textarea:focus, select:focus {
 
 .checklist-reset:hover { color: var(--danger); }
 
+/* GitHub Top10 */
+.github-period-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-tertiary);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+}
+
+.github-period-btn {
+  flex: 1;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 4px;
+}
+
+.github-period-btn.active {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.github-period-btn:hover:not(.active) {
+  color: var(--text-secondary);
+}
+
+.github-top10-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  min-height: 14px;
+}
+
+.github-refresh-btn {
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
+}
+
+.github-top10-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.github-repo-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  cursor: pointer;
+  transition: all var(--transition);
+  text-decoration: none;
+  color: inherit;
+}
+
+.github-repo-item:hover {
+  background: var(--accent-light);
+  transform: translateX(2px);
+}
+
+.github-repo-rank {
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.github-repo-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.github-repo-name {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--accent);
+  flex: 1;
+  min-width: 0;
+}
+
+.github-repo-desc {
+  display: none;
+}
+
+.github-repo-meta {
+  display: flex;
+  gap: 6px;
+  font-size: 9px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .tab-bar {
   display: flex; gap: 4px;
   background: var(--bg-tertiary);

@@ -1,12 +1,13 @@
 import asyncio
 import json
+import os
 import time
 import uuid
 from pathlib import Path
 from typing import Any, Optional
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -22,6 +23,7 @@ from .db import (
     row_to_tool,
 )
 from .seed import seed_if_empty, seed_tools_if_empty
+from . import github_top10 as gh_top10
 
 STATIC = Path(__file__).resolve().parent / "static"
 
@@ -525,6 +527,43 @@ def project_stats() -> dict[str, dict[str, int]]:
                     stats[pid] = {"memos": 0, "ops": 0, "snippets": 0}
                 stats[pid][key] = row["cnt"]
     return {str(k): v for k, v in stats.items()}
+
+
+# ---------- GitHub Top10 ----------
+
+@app.get("/api/github-top10")
+def get_github_top10(
+    period: str = Query("weekly", pattern="^(weekly|monthly)$"),
+    refresh: bool = False,
+) -> dict[str, Any]:
+    try:
+        return gh_top10.get_trending(period, force_refresh=refresh)  # type: ignore[arg-type]
+    except Exception as exc:
+        raise HTTPException(502, f"GitHub Top10 获取失败: {exc}") from exc
+
+
+@app.post("/api/github-top10/refresh")
+def refresh_github_top10(period: Optional[str] = None) -> dict[str, Any]:
+    try:
+        if period in ("weekly", "monthly"):
+            return gh_top10.refresh_period(period)  # type: ignore[arg-type]
+        return gh_top10.refresh_all()
+    except Exception as exc:
+        raise HTTPException(502, f"GitHub Top10 刷新失败: {exc}") from exc
+
+
+@app.get("/api/cron/github-top10")
+def cron_github_top10(request: Request) -> dict[str, Any]:
+    secret = os.environ.get("CRON_SECRET", "").strip()
+    if secret:
+        auth = request.headers.get("Authorization", "")
+        if auth != f"Bearer {secret}":
+            raise HTTPException(403, "Forbidden")
+    try:
+        gh_top10.refresh_all()
+        return {"ok": True, "refreshedAt": int(time.time() * 1000)}
+    except Exception as exc:
+        raise HTTPException(502, str(exc)) from exc
 
 
 # ---------- Static files ----------

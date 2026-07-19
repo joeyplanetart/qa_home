@@ -13,6 +13,8 @@ let _cache = {
   tools: [],
   settings: { theme: 'light' },
   projectStats: {},
+  githubTop10: { weekly: { items: [], fetchedAt: null }, monthly: { items: [], fetchedAt: null } },
+  githubPeriod: 'weekly',
 };
 
 async function apiRequest(method, path, body) {
@@ -234,6 +236,34 @@ async function updateTool(id, data) {
 async function deleteToolById(id) {
   await apiRequest('DELETE', `/tools/${id}`);
   _cache.tools = _cache.tools.filter(t => t.id !== id);
+}
+
+// ---------- GitHub Top10 ----------
+
+function getGithubTop10(period) {
+  return _cache.githubTop10[period] || { items: [], fetchedAt: null };
+}
+
+function getGithubPeriod() {
+  return _cache.githubPeriod;
+}
+
+async function loadGithubTop10(period, refresh = false) {
+  const data = await apiRequest('GET', `/github-top10?period=${period}${refresh ? '&refresh=true' : ''}`);
+  _cache.githubTop10[period] = data;
+  return data;
+}
+
+async function loadAllGithubTop10(refresh = false) {
+  await Promise.all([
+    loadGithubTop10('weekly', refresh),
+    loadGithubTop10('monthly', refresh),
+  ]);
+}
+
+async function refreshGithubTop10Api() {
+  await apiRequest('POST', '/github-top10/refresh');
+  await loadAllGithubTop10(false);
 }
 
 // ---------- Project Health ----------
