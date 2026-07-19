@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import httpx
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -24,6 +24,7 @@ from .db import (
 )
 from .seed import seed_if_empty, seed_tools_if_empty
 from . import github_top10 as gh_top10
+from . import runner as automation_runner
 
 STATIC = Path(__file__).resolve().parent / "static"
 
@@ -108,6 +109,10 @@ class HealthCheckItem(BaseModel):
 
 class HealthCheckRequest(BaseModel):
     items: list[HealthCheckItem] = Field(default_factory=list)
+
+
+class AutomationRunRequest(BaseModel):
+    suite: str = "cafepress"
 
 
 HEALTH_CHECK_TIMEOUT = 10.0
@@ -566,6 +571,71 @@ def cron_github_top10(request: Request) -> dict[str, Any]:
         raise HTTPException(502, str(exc)) from exc
 
 
+# ---------- UI Automation ----------
+
+@app.get("/api/automation/status")
+def automation_status() -> dict[str, Any]:
+    return automation_runner.get_status()
+
+
+@app.get("/api/automation/suites")
+def automation_suites() -> list[dict[str, Any]]:
+    return automation_runner.list_suites()
+
+
+@app.get("/api/automation/runs")
+def automation_runs(limit: int = Query(50, ge=1, le=200)) -> list[dict[str, Any]]:
+    return automation_runner.list_runs(limit=limit)
+
+
+@app.get("/api/automation/runs/{run_id}")
+def automation_run_detail(run_id: str) -> dict[str, Any]:
+    data = automation_runner.get_run(run_id)
+    if not data:
+        raise HTTPException(404, "Run not found")
+    return data
+
+
+@app.get("/api/automation/runs/{run_id}/log")
+def automation_run_log(run_id: str) -> dict[str, str]:
+    log = automation_runner.get_run_log(run_id)
+    if log is None:
+        raise HTTPException(404, "Run not found")
+    return {"log": log}
+
+
+@app.get("/api/automation/runs/{run_id}/report")
+def automation_run_report(run_id: str) -> FileResponse:
+    path = automation_runner.get_report_path(run_id)
+    if not path:
+        raise HTTPException(404, "Report not found")
+    return FileResponse(path, media_type="text/html")
+
+
+@app.get("/api/automation/runs/{run_id}/screenshots/{filename}")
+def automation_screenshot(run_id: str, filename: str) -> FileResponse:
+    path = automation_runner.get_screenshot_path(run_id, filename)
+    if not path:
+        raise HTTPException(404, "Screenshot not found")
+    return FileResponse(path, media_type="image/png")
+
+
+@app.post("/api/automation/run", status_code=202)
+def automation_start_run(body: AutomationRunRequest, background_tasks: BackgroundTasks) -> dict[str, Any]:
+    if not automation_runner.can_run():
+        raise HTTPException(503, automation_runner.get_status()["message"])
+    if automation_runner.is_running():
+        raise HTTPException(409, "已有测试任务在运行")
+    try:
+        run = automation_runner.create_run(body.suite)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from exc
+    background_tasks.add_task(automation_runner.execute_run, run["runId"], body.suite)
+    return run
+
+
 # ---------- Static files ----------
 
 def _static_file(base: Path, rel: str) -> Path:
@@ -581,6 +651,10 @@ if (STATIC / "index.html").is_file():
     @app.get("/")
     def index() -> FileResponse:
         return FileResponse(_static_file(STATIC, "index.html"))
+
+    @app.get("/automation")
+    def automation_page() -> FileResponse:
+        return FileResponse(_static_file(STATIC, "automation.html"))
 
     @app.get("/assets/{path:path}")
     def serve_assets(path: str) -> FileResponse:

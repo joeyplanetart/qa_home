@@ -1,0 +1,523 @@
+"""UI 自动化测试执行器"""
+from __future__ import annotations
+
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+import uuid
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from typing import Any, Optional
+
+from .db import get_conn
+
+ROOT = Path(__file__).resolve().parent.parent
+AUTOMATION_DIR = ROOT / "automation"
+SUITES_DIR = AUTOMATION_DIR / "suites"
+REPORTS_DIR = ROOT / "reports"
+
+SUITE_LABELS = {
+    "cafepress": "CafePress 冒烟",
+    "sti": "STI 冒烟",
+}
+
+_running: Optional[str] = None
+MAX_LOG_CHARS = 120_000
+
+
+def _uid() -> str:
+    return uuid.uuid4().hex[:12]
+
+
+def _now() -> int:
+    return int(time.time() * 1000)
+
+
+def is_vercel() -> bool:
+    return os.environ.get("VERCEL") == "1"
+
+
+def can_run() -> bool:
+    return not is_vercel() and SUITES_DIR.is_dir()
+
+
+def is_running() -> bool:
+    return _running is not None
+
+
+def check_playwright_browsers() -> tuple[bool, str]:
+    try:
+        from playwright.sync_api import sync_playwright
+
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            browser.close()
+        return True, ""
+    except Exception as exc:
+        msg = str(exc)
+        if "Executable doesn't exist" in msg or "browserType.launch" in msg:
+            return False, (
+                "Playwright 浏览器未安装。请在项目根目录运行: "
+                "./scripts/install-playwright.sh"
+            )
+        return False, f"Playwright 不可用: {msg[:200]}"
+
+
+def install_playwright_browsers() -> bool:
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-m", "playwright", "install", "chromium"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        return proc.returncode == 0
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+
+
+def ensure_playwright_browsers() -> None:
+    ready, message = check_playwright_browsers()
+    if ready:
+        return
+    if install_playwright_browsers():
+        ready, message = check_playwright_browsers()
+        if ready:
+            return
+    raise RuntimeError(message)
+
+
+def get_status() -> dict[str, Any]:
+    if is_vercel():
+        return {
+            "canRun": False,
+            "running": False,
+            "currentRunId": _running,
+            "needsBrowserInstall": False,
+            "message": "Vercel 线上环境不支持执行 UI 自动化，请在本地运行 ./scripts/run.sh",
+        }
+    if not SUITES_DIR.is_dir():
+        return {
+            "canRun": False,
+            "running": False,
+            "currentRunId": _running,
+            "needsBrowserInstall": False,
+            "message": "未找到 automation/suites 目录",
+        }
+    browser_ready, browser_msg = check_playwright_browsers()
+    if not browser_ready:
+        return {
+            "canRun": False,
+            "running": is_running(),
+            "currentRunId": _running,
+            "needsBrowserInstall": True,
+            "message": browser_msg,
+        }
+    return {
+        "canRun": True,
+        "running": is_running(),
+        "currentRunId": _running,
+        "needsBrowserInstall": False,
+        "message": "就绪" if not is_running() else "测试运行中…",
+    }
+
+
+def _load_suite_meta(suite_id: str) -> dict[str, Any]:
+    meta_path = SUITES_DIR / suite_id / "meta.json"
+    meta: dict[str, Any] = {
+        "id": suite_id,
+        "name": SUITE_LABELS.get(suite_id, suite_id.upper()),
+        "description": "",
+        "projectId": None,
+    }
+    if meta_path.is_file():
+        try:
+            data = json.loads(meta_path.read_text(encoding="utf-8"))
+            meta.update({k: v for k, v in data.items() if k in ("name", "description", "projectId")})
+        except (json.JSONDecodeError, OSError):
+            pass
+    return meta
+
+
+def _count_test_functions(suite_path: Path) -> int:
+    count = 0
+    if not suite_path.is_dir():
+        return 0
+    for file_path in suite_path.glob("**/test_*.py"):
+        try:
+            text = file_path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        count += len(re.findall(r"^\s*def test_", text, re.MULTILINE))
+    return count
+
+
+def list_suites() -> list[dict[str, Any]]:
+    if not SUITES_DIR.is_dir():
+        return []
+    suites: list[dict[str, Any]] = []
+    for entry in sorted(SUITES_DIR.iterdir()):
+        if not entry.is_dir() or entry.name.startswith("."):
+            continue
+        meta = _load_suite_meta(entry.name)
+        suites.append({
+            **meta,
+            "id": entry.name,
+            "testCount": _count_test_functions(entry),
+        })
+    return suites
+
+
+def row_to_run(row: Any) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "suite": row["suite"],
+        "suiteName": row["suite_name"],
+        "status": row["status"],
+        "total": row["total"],
+        "passed": row["passed"],
+        "failed": row["failed"],
+        "skipped": row["skipped"],
+        "durationMs": row["duration_ms"],
+        "startedAt": row["started_at"],
+        "finishedAt": row["finished_at"],
+        "logSummary": row["log_summary"],
+        "hasReport": bool(row["report_path"]),
+        "hasLog": bool(row["log_text"]),
+    }
+
+
+def row_to_result(row: Any) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "runId": row["run_id"],
+        "testName": row["test_name"],
+        "className": row["class_name"],
+        "status": row["status"],
+        "durationMs": row["duration_ms"],
+        "errorMessage": row["error_message"],
+        "screenshot": row["screenshot"],
+    }
+
+
+def list_runs(limit: int = 50) -> list[dict[str, Any]]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM automation_runs ORDER BY started_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [row_to_run(r) for r in rows]
+
+
+def get_run(run_id: str) -> Optional[dict[str, Any]]:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM automation_runs WHERE id = ?",
+            (run_id,),
+        ).fetchone()
+        if not row:
+            return None
+        results = conn.execute(
+            "SELECT * FROM automation_results WHERE run_id = ? ORDER BY test_name",
+            (run_id,),
+        ).fetchall()
+    data = row_to_run(row)
+    data["results"] = [row_to_result(r) for r in results]
+    return data
+
+
+def get_run_log(run_id: str) -> Optional[str]:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT log_text FROM automation_runs WHERE id = ?",
+            (run_id,),
+        ).fetchone()
+    if not row:
+        return None
+    return row["log_text"] or ""
+
+
+def get_report_path(run_id: str) -> Optional[Path]:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT report_path FROM automation_runs WHERE id = ?",
+            (run_id,),
+        ).fetchone()
+    if not row or not row["report_path"]:
+        return None
+    path = (REPORTS_DIR / row["report_path"]).resolve()
+    if not str(path).startswith(str(REPORTS_DIR.resolve())):
+        return None
+    return path if path.is_file() else None
+
+
+def _resolve_suite_path(suite: str) -> Path:
+    if suite == "all":
+        return SUITES_DIR
+    path = (SUITES_DIR / suite).resolve()
+    if not str(path).startswith(str(SUITES_DIR.resolve())) or not path.is_dir():
+        raise ValueError(f"未知测试套件: {suite}")
+    return path
+
+
+def create_run(suite: str) -> dict[str, Any]:
+    global _running
+    if not can_run():
+        raise RuntimeError("当前环境不可运行自动化测试")
+    if is_running():
+        raise RuntimeError("已有测试任务在运行，请稍后再试")
+
+    suite_path = _resolve_suite_path(suite)
+    meta = _load_suite_meta(suite) if suite != "all" else {
+        "name": "全部套件",
+        "description": "运行 automation/suites 下所有用例",
+    }
+    run_id = _uid()
+    started = _now()
+
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO automation_runs
+               (id, suite, suite_name, status, total, passed, failed, skipped,
+                duration_ms, started_at, finished_at, log_summary, log_text, report_path)
+               VALUES (?,?,?,?,0,0,0,0,0,?,NULL,'','','')""",
+            (run_id, suite, meta.get("name", suite), "running", started),
+        )
+        conn.commit()
+
+    _running = run_id
+    return {"runId": run_id, "status": "running", "suite": suite}
+
+
+def _parse_junit(junit_path: Path, screenshots_dir: Path) -> tuple[list[dict], dict]:
+    tree = ET.parse(junit_path)
+    root = tree.getroot()
+    if root.tag == "testsuites":
+        suites = root.findall("testsuite")
+    else:
+        suites = [root]
+
+    results: list[dict] = []
+    totals = {"total": 0, "passed": 0, "failed": 0, "skipped": 0, "duration_ms": 0}
+
+    for suite_el in suites:
+        for case in suite_el.findall("testcase"):
+            name = case.get("name", "")
+            classname = case.get("classname", "")
+            duration_ms = int(float(case.get("time", "0")) * 1000)
+            status = "passed"
+            error_message = ""
+
+            if case.find("failure") is not None:
+                status = "failed"
+                failure = case.find("failure")
+                error_message = (failure.text or failure.get("message", "")).strip()
+            elif case.find("error") is not None:
+                status = "failed"
+                err = case.find("error")
+                error_message = (err.text or err.get("message", "")).strip()
+            elif case.find("skipped") is not None:
+                status = "skipped"
+
+            node_id = f"{classname}::{name}" if classname else name
+            safe_name = node_id.replace("/", "_").replace("::", "_")
+            screenshot = ""
+            shot_path = screenshots_dir / f"{safe_name}.png"
+            if not shot_path.is_file():
+                for candidate in screenshots_dir.glob(f"*{name}*.png"):
+                    shot_path = candidate
+                    break
+            if shot_path.is_file():
+                screenshot = shot_path.name
+
+            results.append({
+                "test_name": name,
+                "class_name": classname,
+                "status": status,
+                "duration_ms": duration_ms,
+                "error_message": error_message[:8000],
+                "screenshot": screenshot,
+            })
+
+            totals["total"] += 1
+            totals["duration_ms"] += duration_ms
+            if status == "passed":
+                totals["passed"] += 1
+            elif status == "failed":
+                totals["failed"] += 1
+            else:
+                totals["skipped"] += 1
+
+    return results, totals
+
+
+def _finish_run_error(run_id: str, started: int, message: str) -> None:
+    finished = _now()
+    with get_conn() as conn:
+        conn.execute(
+            """UPDATE automation_runs SET
+               status=?, total=0, passed=0, failed=0, skipped=0,
+               duration_ms=?, finished_at=?, log_summary=?, log_text=?, report_path=?
+               WHERE id=?""",
+            (
+                "error",
+                finished - started,
+                finished,
+                message[:500],
+                message[:MAX_LOG_CHARS],
+                "",
+                run_id,
+            ),
+        )
+        conn.commit()
+
+
+def execute_run(run_id: str, suite: str) -> None:
+    global _running
+    started = _now()
+    run_dir = REPORTS_DIR / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    junit_path = run_dir / "junit.xml"
+    html_path = run_dir / "report.html"
+    log_path = run_dir / "output.log"
+    screenshots_dir = run_dir / "screenshots"
+    screenshots_dir.mkdir(exist_ok=True)
+
+    try:
+        ensure_playwright_browsers()
+    except RuntimeError as exc:
+        _finish_run_error(run_id, started, str(exc))
+        _running = None
+        return
+
+    suite_path = _resolve_suite_path(suite)
+    meta = _load_suite_meta(suite) if suite != "all" else {"name": "全部套件"}
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "pytest",
+        str(suite_path),
+        "-c",
+        str(AUTOMATION_DIR / "pytest.ini"),
+        f"--junitxml={junit_path}",
+        f"--html={html_path}",
+        "--self-contained-html",
+        "-v",
+        "--tb=short",
+    ]
+
+    env = os.environ.copy()
+    env["AUTOMATION_SCREENSHOTS_DIR"] = str(screenshots_dir)
+
+    log_text = ""
+    exit_code = 1
+    try:
+        proc = subprocess.run(
+            cmd,
+            cwd=str(ROOT),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=1800,
+        )
+        log_text = (proc.stdout or "") + ("\n" + proc.stderr if proc.stderr else "")
+        exit_code = proc.returncode
+    except subprocess.TimeoutExpired as exc:
+        log_text = (exc.stdout or "") + ("\n" + (exc.stderr or "")) + "\n[超时] 测试运行超过 30 分钟"
+        exit_code = 124
+    except Exception as exc:
+        log_text = f"执行失败: {exc}"
+        exit_code = 1
+
+    try:
+        log_path.write_text(log_text, encoding="utf-8")
+    except OSError:
+        pass
+
+    results: list[dict] = []
+    totals = {"total": 0, "passed": 0, "failed": 0, "skipped": 0, "duration_ms": 0}
+
+    if junit_path.is_file():
+        try:
+            results, totals = _parse_junit(junit_path, screenshots_dir)
+        except ET.ParseError:
+            pass
+
+    if totals["total"] == 0:
+        passed_match = re.search(r"(\d+) passed", log_text)
+        failed_match = re.search(r"(\d+) failed", log_text)
+        if passed_match:
+            totals["passed"] = int(passed_match.group(1))
+            totals["total"] += totals["passed"]
+        if failed_match:
+            totals["failed"] = int(failed_match.group(1))
+            totals["total"] += totals["failed"]
+
+    finished = _now()
+    duration_ms = finished - started
+
+    if totals["failed"] > 0 or exit_code not in (0, 1):
+        status = "failed"
+    elif totals["total"] == 0:
+        status = "error"
+    else:
+        status = "passed"
+
+    log_summary = log_text.strip().splitlines()[-1][:500] if log_text.strip() else ""
+    report_rel = f"{run_id}/report.html" if html_path.is_file() else ""
+    stored_log = log_text[:MAX_LOG_CHARS]
+
+    with get_conn() as conn:
+        conn.execute(
+            """UPDATE automation_runs SET
+               status=?, total=?, passed=?, failed=?, skipped=?,
+               duration_ms=?, finished_at=?, log_summary=?, log_text=?, report_path=?
+               WHERE id=?""",
+            (
+                status,
+                totals["total"],
+                totals["passed"],
+                totals["failed"],
+                totals["skipped"],
+                duration_ms,
+                finished,
+                log_summary,
+                stored_log,
+                report_rel,
+                run_id,
+            ),
+        )
+        for idx, item in enumerate(results):
+            conn.execute(
+                """INSERT INTO automation_results
+                   (id, run_id, test_name, class_name, status, duration_ms, error_message, screenshot)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (
+                    _uid(),
+                    run_id,
+                    item["test_name"],
+                    item["class_name"],
+                    item["status"],
+                    item["duration_ms"],
+                    item["error_message"],
+                    item["screenshot"],
+                ),
+            )
+        conn.commit()
+
+    _running = None
+
+
+def get_screenshot_path(run_id: str, filename: str) -> Optional[Path]:
+    if ".." in filename or "/" in filename or "\\" in filename:
+        return None
+    path = (REPORTS_DIR / run_id / "screenshots" / filename).resolve()
+    reports_resolved = REPORTS_DIR.resolve()
+    if not str(path).startswith(str(reports_resolved)):
+        return None
+    return path if path.is_file() else None

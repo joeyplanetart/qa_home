@@ -13,6 +13,9 @@ echo "→ 安装依赖"
 venv/bin/pip install --upgrade pip
 venv/bin/pip install -r requirements.txt
 
+echo "→ 安装 Playwright Chromium（UI 自动化）"
+venv/bin/python -m playwright install chromium
+
 if [ ! -f ".env" ]; then
   echo "→ 复制环境变量模板: cp .env.example .env"
   echo "  然后填入 TURSO_AUTH_TOKEN（turso db tokens create qa）"

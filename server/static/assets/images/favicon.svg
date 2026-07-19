@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <circle cx="16" cy="16" r="16" fill="#1e2433"/>
+  <path d="M9 10h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4l-2 3v-3H9a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z" fill="#4dabf7"/>
+  <text x="16" y="15" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="system-ui, sans-serif" font-size="7" font-weight="700">QA</text>
+</svg>

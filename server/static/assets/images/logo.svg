@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none" role="img" aria-label="QA">
+  <circle cx="40" cy="40" r="40" fill="#1e2433"/>
+  <path d="M22 24h36a4 4 0 0 1 4 4v20a4 4 0 0 1-4 4H34l-6 7v-7h-6a4 4 0 0 1-4-4V28a4 4 0 0 1 4-4z" fill="#4dabf7"/>
+  <text x="40" y="36" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="15" font-weight="700">QA</text>
+</svg>

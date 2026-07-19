@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI 自动化 — QA Home</title>
+  <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/main.css">
+  <link rel="stylesheet" href="assets/css/automation.css">
+</head>
+<body>
+
+<div class="auto-page">
+  <header class="auto-topbar">
+    <div class="auto-topbar-left">
+      <a href="/" class="auto-back">← QA Home</a>
+      <img src="assets/images/logo.svg" alt="QA" width="36" height="36" style="border-radius:50%">
+      <div>
+        <div class="auto-title">🤖 UI 自动化</div>
+        <div class="auto-subtitle">Playwright · pytest · 本地执行</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="auto-status-bar">
+        <span class="auto-status-dot" id="statusDot"></span>
+        <span id="statusText">加载中…</span>
+      </div>
+      <button class="btn-icon theme-toggle" onclick="toggleTheme()" title="切换主题" id="themeBtn">🌙</button>
+    </div>
+  </header>
+
+  <div class="auto-banner" id="envBanner" style="display:none;"></div>
+
+  <div class="auto-layout">
+    <aside class="auto-sidebar">
+      <div class="auto-sidebar-title">测试套件</div>
+      <div id="suiteList"></div>
+      <button class="auto-run-btn" id="runSelectedBtn" onclick="runSelectedSuite()">▶ 运行选中套件</button>
+      <button class="auto-run-btn" style="margin-top:8px;background:var(--bg-tertiary);color:var(--text-secondary);" onclick="runAllSuites()">▶ 运行全部</button>
+    </aside>
+
+    <section class="auto-main">
+      <div class="auto-tabs">
+        <button class="auto-tab active" data-panel="results" onclick="switchPanel('results')">📊 执行结果</button>
+        <button class="auto-tab" data-panel="history" onclick="switchPanel('history')">📋 历史记录</button>
+        <button class="auto-tab" data-panel="log" onclick="switchPanel('log')">📜 错误日志</button>
+        <button class="auto-tab" data-panel="report" onclick="switchPanel('report')">📄 测试报告</button>
+      </div>
+
+      <div class="auto-panel active" id="panel-results">
+        <div class="auto-summary" id="runSummary"></div>
+        <div class="auto-result-list" id="resultsList">
+          <div class="auto-empty">
+            <div class="auto-empty-icon">▶️</div>
+            选择套件并点击运行，或从历史记录中选择一次运行
+          </div>
+        </div>
+      </div>
+
+      <div class="auto-panel" id="panel-history">
+        <div class="auto-history-list" id="historyList"></div>
+      </div>
+
+      <div class="auto-panel" id="panel-log">
+        <pre class="auto-log-box" id="logBox">暂无日志</pre>
+      </div>
+
+      <div class="auto-panel" id="panel-report">
+        <iframe class="auto-report-frame" id="reportFrame" title="测试报告" src="about:blank"></iframe>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="assets/js/automation.js"></script>
+</body>
+</html>

@@ -89,6 +89,34 @@ CREATE TABLE IF NOT EXISTS meta (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS automation_runs (
+    id           TEXT PRIMARY KEY,
+    suite        TEXT NOT NULL,
+    suite_name   TEXT NOT NULL DEFAULT '',
+    status       TEXT NOT NULL DEFAULT 'pending',
+    total        INTEGER NOT NULL DEFAULT 0,
+    passed       INTEGER NOT NULL DEFAULT 0,
+    failed       INTEGER NOT NULL DEFAULT 0,
+    skipped      INTEGER NOT NULL DEFAULT 0,
+    duration_ms  INTEGER NOT NULL DEFAULT 0,
+    started_at   INTEGER NOT NULL,
+    finished_at  INTEGER,
+    log_summary  TEXT NOT NULL DEFAULT '',
+    log_text     TEXT NOT NULL DEFAULT '',
+    report_path  TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS automation_results (
+    id            TEXT PRIMARY KEY,
+    run_id        TEXT NOT NULL,
+    test_name     TEXT NOT NULL,
+    class_name    TEXT NOT NULL DEFAULT '',
+    status        TEXT NOT NULL,
+    duration_ms   INTEGER NOT NULL DEFAULT 0,
+    error_message TEXT NOT NULL DEFAULT '',
+    screenshot    TEXT NOT NULL DEFAULT ''
+);
 """
 
 
