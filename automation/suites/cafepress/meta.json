@@ -1,5 +1,5 @@
 {
-  "name": "CafePress 冒烟",
-  "description": "CafePress 美国主站 (CAFUS) 基础检查",
+  "name": "CafePress E2E",
+  "description": "CafePress 美国主站 (CAFUS) 模块化 E2E 测试",
   "projectId": 170
 }
