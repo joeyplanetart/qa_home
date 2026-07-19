@@ -1,10 +1,21 @@
 """CafePress 套件专用 fixtures"""
 import pytest
 
+from pages.auth import LoginPage, RegisterPage
 from pages.cart import CartPage
 from pages.homepage import HomePage
 from pages.product import ProductPage
 from pages.search import SearchPage
+
+
+@pytest.fixture
+def login(page):
+    return LoginPage(page)
+
+
+@pytest.fixture
+def register(page):
+    return RegisterPage(page)
 
 
 @pytest.fixture

@@ -26,6 +26,8 @@ let _selectedCaseName = null;
 let _casesData = null;
 let _pollTimer = null;
 let _activePanel = 'results';
+let _collapsedCaseFiles = new Set();
+let _checkedTests = new Set();
 
 function $(id) {
   return document.getElementById(id);
@@ -70,6 +72,7 @@ function formatConfigSummary(config) {
   if (config.slowMo > 0) parts.push(`慢动作 ${config.slowMo}ms`);
   if (config.video && config.video !== 'off') parts.push(`录像:${config.video}`);
   if (config.tracing && config.tracing !== 'off') parts.push(`trace:${config.tracing}`);
+  if (config.selectedTests?.length) parts.push(`${config.selectedTests.length} 个选用例`);
   return parts.join(' · ');
 }
 
@@ -186,6 +189,35 @@ function formatDuration(ms) {
   if (!ms) return '-';
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+const ARTIFACT_LABELS = {
+  action: '操作',
+  email: 'Email',
+  password: 'Password',
+  customer_id: 'Customer ID',
+  order_id: '订单号',
+  order_email: '下单 Email',
+  total: '订单金额',
+  status: '订单状态',
+};
+
+function formatArtifactLabel(key) {
+  return ARTIFACT_LABELS[key] || key;
+}
+
+function renderArtifacts(artifacts) {
+  if (!artifacts || !Object.keys(artifacts).length) return '';
+  const rows = Object.entries(artifacts)
+    .filter(([, value]) => value !== null && value !== undefined && value !== '')
+    .map(([key, value]) => `
+      <div class="auto-result-artifact-row">
+        <span class="auto-result-artifact-label">${escapeHtml(formatArtifactLabel(key))}</span>
+        <span class="auto-result-artifact-value">${escapeHtml(String(value))}</span>
+      </div>
+    `).join('');
+  if (!rows) return '';
+  return `<div class="auto-result-artifacts"><div class="auto-result-artifacts-title">测试数据</div>${rows}</div>`;
 }
 
 function statusLabel(status) {
@@ -342,6 +374,7 @@ async function renderRunDetail() {
         <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
           ${escapeHtml(r.className || '')} · ${formatDuration(r.durationMs)}
         </div>
+        ${renderArtifacts(r.artifacts)}
         ${r.errorMessage ? `<div class="auto-result-error">${escapeHtml(r.errorMessage)}</div>` : ''}
         ${r.screenshot ? `
           <div class="auto-result-shot">
@@ -374,6 +407,7 @@ function selectSuite(id) {
   _selectedSuite = id;
   _selectedCaseFile = null;
   _selectedCaseName = null;
+  _checkedTests.clear();
   renderSuites();
   if (_activePanel === 'cases') {
     loadCases();
@@ -382,6 +416,7 @@ function selectSuite(id) {
 
 async function loadCases() {
   const el = $('casesList');
+  loadCollapsedCaseFiles();
   try {
     _casesData = await api('GET', `/suites/${encodeURIComponent(_selectedSuite)}/cases`);
     renderCasesList();
@@ -400,6 +435,87 @@ async function loadCases() {
   }
 }
 
+function testCaseKey(filePath, caseName) {
+  return `${filePath}::${caseName}`;
+}
+
+function updateCasesToolbar() {
+  const btn = $('runSelectedCasesBtn');
+  if (!btn) return;
+  const count = _checkedTests.size;
+  btn.disabled = count === 0;
+  btn.textContent = count > 0 ? `▶ 运行选中 (${count})` : '▶ 运行选中';
+}
+
+function toggleCaseSelection(filePath, caseName, event) {
+  event.stopPropagation();
+  const key = testCaseKey(filePath, caseName);
+  if (_checkedTests.has(key)) {
+    _checkedTests.delete(key);
+  } else {
+    _checkedTests.add(key);
+  }
+  renderCasesList();
+}
+
+function toggleFileSelection(filePath, caseNames, event) {
+  event.stopPropagation();
+  const keys = caseNames.map(name => testCaseKey(filePath, name));
+  const allChecked = keys.every(key => _checkedTests.has(key));
+  keys.forEach(key => {
+    if (allChecked) _checkedTests.delete(key);
+    else _checkedTests.add(key);
+  });
+  renderCasesList();
+}
+
+function clearCaseSelection() {
+  _checkedTests.clear();
+  renderCasesList();
+}
+
+function isFileChecked(file, keys) {
+  if (!file.cases.length) return false;
+  return keys.every(key => _checkedTests.has(key));
+}
+
+function isFileIndeterminate(file, keys) {
+  if (!file.cases.length) return false;
+  const checkedCount = keys.filter(key => _checkedTests.has(key)).length;
+  return checkedCount > 0 && checkedCount < keys.length;
+}
+
+function collapsedCasesStorageKey() {
+  return `qa-automation-collapsed-${_selectedSuite}`;
+}
+
+function loadCollapsedCaseFiles() {
+  try {
+    const saved = localStorage.getItem(collapsedCasesStorageKey());
+    _collapsedCaseFiles = saved ? new Set(JSON.parse(saved)) : new Set();
+  } catch (_) {
+    _collapsedCaseFiles = new Set();
+  }
+}
+
+function saveCollapsedCaseFiles() {
+  localStorage.setItem(
+    collapsedCasesStorageKey(),
+    JSON.stringify([..._collapsedCaseFiles]),
+  );
+}
+
+function toggleCaseFile(filePath, event) {
+  event.stopPropagation();
+  if (_collapsedCaseFiles.has(filePath)) {
+    _collapsedCaseFiles.delete(filePath);
+  } else {
+    _collapsedCaseFiles.add(filePath);
+  }
+  saveCollapsedCaseFiles();
+  renderCasesList();
+}
+
 function renderCasesList() {
   const el = $('casesList');
   if (!_casesData || !_casesData.files.length) {
@@ -408,34 +524,77 @@ function renderCasesList() {
   }
 
   el.innerHTML = `
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
-      ${escapeHtml(_casesData.suiteName)} · ${_casesData.testCount} 个用例
+    <div class="auto-cases-toolbar">
+      <div class="auto-cases-toolbar-left">
+        <span class="auto-cases-suite-meta">${escapeHtml(_casesData.suiteName)} · ${_casesData.testCount} 个用例</span>
+      </div>
+      <div class="auto-cases-toolbar-actions">
+        <button type="button" class="auto-cases-tool-btn" id="runSelectedCasesBtn" disabled onclick="runCheckedCases()">▶ 运行选中</button>
+        <button type="button" class="auto-cases-tool-btn subtle" onclick="clearCaseSelection()">清除</button>
+      </div>
     </div>
-    ${_casesData.files.map(file => `
-      <div class="auto-case-file">
-        <div class="auto-case-file-head" onclick="viewTestFile('${escapeAttr(file.path)}')">
-          <div class="auto-case-file-name">📄 ${escapeHtml(file.name)}</div>
-          <div class="auto-case-file-meta">${file.cases.length} 用例 · ${file.lineCount} 行</div>
-          ${file.moduleDoc ? `<div class="auto-case-file-doc">${escapeHtml(file.moduleDoc)}</div>` : ''}
+    ${_casesData.files.map(file => {
+      const collapsed = _collapsedCaseFiles.has(file.path);
+      const caseKeys = file.cases.map(c => testCaseKey(file.path, c.name));
+      const fileChecked = isFileChecked(file, caseKeys);
+      const fileIndeterminate = isFileIndeterminate(file, caseKeys);
+      return `
+      <div class="auto-case-file${collapsed ? ' collapsed' : ''}">
+        <div class="auto-case-file-head">
+          <button type="button" class="auto-case-toggle" title="${collapsed ? '展开' : '收起'}"
+                  onclick="toggleCaseFile('${escapeAttr(file.path)}', event)" aria-expanded="${!collapsed}">
+            <span class="auto-case-chevron">▼</span>
+          </button>
+          <label class="auto-case-file-check" onclick="event.stopPropagation()">
+            <input type="checkbox" ${fileChecked ? 'checked' : ''}
+                   ${fileIndeterminate ? 'data-indeterminate="1"' : ''}
+                   onchange="toggleFileSelection('${escapeAttr(file.path)}', [${file.cases.map(c => `'${escapeAttr(c.name)}'`).join(',')}], event)">
+          </label>
+          <div class="auto-case-file-info" onclick="viewTestFile('${escapeAttr(file.path)}')">
+            <div class="auto-case-file-name">📄 ${escapeHtml(file.name)}</div>
+            <div class="auto-case-file-meta">${file.cases.length} 用例 · ${file.lineCount} 行</div>
+            ${file.moduleDoc ? `<div class="auto-case-file-doc">${escapeHtml(file.moduleDoc)}</div>` : ''}
+          </div>
+          <button type="button" class="auto-case-run-btn" title="运行此文件"
+                  onclick="runTestFile('${escapeAttr(file.path)}', event)">▶</button>
         </div>
         <div class="auto-case-items">
-          ${file.cases.map(c => `
-            <div class="auto-case-item ${_selectedCaseFile === file.path && _selectedCaseName === c.name ? 'active' : ''}"
-                 onclick="viewTestFile('${escapeAttr(file.path)}', '${escapeAttr(c.name)}', ${c.line})">
-              <div class="auto-case-item-name">${escapeHtml(c.name)}</div>
-              ${c.doc ? `<div class="auto-case-item-doc">${escapeHtml(c.doc)}</div>` : ''}
-              <div class="auto-case-item-line">Line ${c.line}</div>
-            </div>
-          `).join('')}
+          ${file.cases.map(c => {
+            const key = testCaseKey(file.path, c.name);
+            return `
+            <div class="auto-case-item ${_selectedCaseFile === file.path && _selectedCaseName === c.name ? 'active' : ''}">
+              <label class="auto-case-check" onclick="event.stopPropagation()">
+                <input type="checkbox" ${_checkedTests.has(key) ? 'checked' : ''}
+                       onchange="toggleCaseSelection('${escapeAttr(file.path)}', '${escapeAttr(c.name)}', event)">
+              </label>
+              <div class="auto-case-item-body"
+                   onclick="viewTestFile('${escapeAttr(file.path)}', '${escapeAttr(c.name)}', ${c.line})">
+                <div class="auto-case-item-name">${escapeHtml(c.name)}</div>
+                ${c.doc ? `<div class="auto-case-item-doc">${escapeHtml(c.doc)}</div>` : ''}
+                <div class="auto-case-item-line">Line ${c.line}</div>
+              </div>
+              <button type="button" class="auto-case-run-btn" title="运行此用例"
+                      onclick="runSingleCase('${escapeAttr(file.path)}', '${escapeAttr(c.name)}', event)">▶</button>
+            </div>`;
+          }).join('')}
         </div>
-      </div>
-    `).join('')}
+      </div>`;
+    }).join('')}
   `;
+
+  el.querySelectorAll('input[data-indeterminate="1"]').forEach(input => {
+    input.indeterminate = true;
+  });
+  updateCasesToolbar();
 }
 
 async function viewTestFile(filePath, caseName = null, highlightLine = null) {
   _selectedCaseFile = filePath;
   _selectedCaseName = caseName;
+  if (caseName) {
+    _collapsedCaseFiles.delete(filePath);
+    saveCollapsedCaseFiles();
+  }
   renderCasesList();
 
   try {
@@ -500,17 +659,54 @@ async function selectRun(id) {
   else switchPanel(_activePanel);
 }
 
+async function startTestRun(tests, label) {
+  const config = getRunConfigFromUI();
+  saveRunConfig(config);
+  const body = { suite: _selectedSuite, config };
+  if (tests && tests.length) body.tests = tests;
+
+  const result = await api('POST', '/run', body);
+  _selectedRunId = result.runId;
+  toast(`已开始运行: ${label}`, 'success');
+  await loadRuns();
+  await loadStatus();
+  switchPanel('results');
+  await renderRunDetail();
+}
+
+async function runCheckedCases() {
+  if (!_checkedTests.size) {
+    toast('请先勾选要运行的用例', 'error');
+    return;
+  }
+  try {
+    await startTestRun([..._checkedTests], `${_checkedTests.size} 个用例`);
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+async function runSingleCase(filePath, caseName, event) {
+  event.stopPropagation();
+  try {
+    await startTestRun([testCaseKey(filePath, caseName)], caseName);
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+async function runTestFile(filePath, event) {
+  event.stopPropagation();
+  try {
+    await startTestRun([filePath], filePath);
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
 async function runSelectedSuite() {
   try {
-    const config = getRunConfigFromUI();
-    saveRunConfig(config);
-    const result = await api('POST', '/run', { suite: _selectedSuite, config });
-    _selectedRunId = result.runId;
-    toast(`已开始运行: ${_selectedSuite}`, 'success');
-    await loadRuns();
-    await loadStatus();
-    switchPanel('results');
-    await renderRunDetail();
+    await startTestRun(null, _selectedSuite);
   } catch (err) {
     toast(err.message, 'error');
   }
@@ -616,6 +812,13 @@ window.runAllSuites = runAllSuites;
 window.switchPanel = switchPanel;
 window.toggleTheme = toggleTheme;
 window.viewTestFile = viewTestFile;
+window.toggleCaseFile = toggleCaseFile;
+window.toggleCaseSelection = toggleCaseSelection;
+window.toggleFileSelection = toggleFileSelection;
+window.clearCaseSelection = clearCaseSelection;
+window.runCheckedCases = runCheckedCases;
+window.runSingleCase = runSingleCase;
+window.runTestFile = runTestFile;
 window.toggleRunConfig = toggleRunConfig;
 window.resetRunConfig = resetRunConfig;
 window.applyViewportPreset = applyViewportPreset;

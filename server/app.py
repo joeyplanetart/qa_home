@@ -127,6 +127,7 @@ class AutomationRunConfig(BaseModel):
 class AutomationRunRequest(BaseModel):
     suite: str = "cafepress"
     config: AutomationRunConfig = Field(default_factory=AutomationRunConfig)
+    tests: list[str] = Field(default_factory=list)
 
 
 HEALTH_CHECK_TIMEOUT = 10.0
@@ -664,8 +665,9 @@ def automation_start_run(body: AutomationRunRequest, background_tasks: Backgroun
     if automation_runner.is_running():
         raise HTTPException(409, "已有测试任务在运行")
     run_config = body.config.model_dump()
+    selected_tests = [t.strip() for t in body.tests if t and t.strip()]
     try:
-        run = automation_runner.create_run(body.suite, run_config)
+        run = automation_runner.create_run(body.suite, run_config, selected_tests)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except RuntimeError as exc:
@@ -675,6 +677,7 @@ def automation_start_run(body: AutomationRunRequest, background_tasks: Backgroun
         run["runId"],
         body.suite,
         run_config,
+        selected_tests,
     )
     return run
 

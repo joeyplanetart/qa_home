@@ -1,8 +1,11 @@
 """Playwright / pytest 公共配置"""
+import json
 import os
 from pathlib import Path
 
 import pytest
+
+from test_data import TestData
 
 
 def _env_int(name: str, default: int) -> int:
@@ -10,6 +13,22 @@ def _env_int(name: str, default: int) -> int:
         return int(os.environ.get(name, str(default)))
     except (TypeError, ValueError):
         return default
+
+
+def _artifact_filename(nodeid: str) -> str:
+    return nodeid.replace("/", "_").replace("::", "_")
+
+
+def _save_test_artifacts(nodeid: str, data: dict) -> None:
+    if not data:
+        return
+    artifacts_dir = os.environ.get("AUTOMATION_ARTIFACTS_DIR")
+    if not artifacts_dir:
+        return
+    out_dir = Path(artifacts_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"{_artifact_filename(nodeid)}.json"
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 @pytest.fixture(scope="session")
@@ -32,6 +51,13 @@ def page(page):
     page.set_default_timeout(timeout)
     page.set_default_navigation_timeout(timeout)
     return page
+
+
+@pytest.fixture
+def test_data(request):
+    data = TestData()
+    yield data
+    _save_test_artifacts(request.node.nodeid, data.to_dict())
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)

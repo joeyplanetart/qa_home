@@ -85,7 +85,11 @@ def _parse_run_config(row: Any) -> dict[str, Any]:
     if not raw:
         return dict(DEFAULT_RUN_CONFIG)
     try:
-        return normalize_run_config(json.loads(raw))
+        data = json.loads(raw)
+        parsed = normalize_run_config(data)
+        if isinstance(data.get("selectedTests"), list):
+            parsed["selectedTests"] = data["selectedTests"]
+        return parsed
     except (json.JSONDecodeError, TypeError, ValueError):
         return dict(DEFAULT_RUN_CONFIG)
 
@@ -384,6 +388,19 @@ def row_to_run(row: Any) -> dict[str, Any]:
 
 
 def row_to_result(row: Any) -> dict[str, Any]:
+    artifacts: dict[str, Any] = {}
+    raw_artifacts = ""
+    try:
+        raw_artifacts = row["artifacts_json"] or ""
+    except (KeyError, IndexError, TypeError):
+        pass
+    if raw_artifacts:
+        try:
+            parsed = json.loads(raw_artifacts)
+            if isinstance(parsed, dict):
+                artifacts = parsed
+        except json.JSONDecodeError:
+            pass
     return {
         "id": row["id"],
         "runId": row["run_id"],
@@ -393,6 +410,7 @@ def row_to_result(row: Any) -> dict[str, Any]:
         "durationMs": row["duration_ms"],
         "errorMessage": row["error_message"],
         "screenshot": row["screenshot"],
+        "artifacts": artifacts,
     }
 
 
@@ -447,6 +465,29 @@ def get_report_path(run_id: str) -> Optional[Path]:
     return path if path.is_file() else None
 
 
+def _artifact_key(class_name: str, test_name: str) -> str:
+    segments = class_name.split(".")
+    if len(segments) >= 2:
+        rel_path = "/".join(segments[:-1]) + "/" + segments[-1] + ".py"
+    else:
+        rel_path = f"{class_name}.py"
+    return f"{rel_path}::{test_name}".replace("/", "_").replace("::", "_")
+
+
+def _load_test_artifacts(artifacts_dir: Path) -> dict[str, dict[str, Any]]:
+    index: dict[str, dict[str, Any]] = {}
+    if not artifacts_dir.is_dir():
+        return index
+    for path in artifacts_dir.glob("*.json"):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        if isinstance(data, dict):
+            index[path.stem] = data
+    return index
+
+
 def _resolve_suite_path(suite: str) -> Path:
     if suite == "all":
         return SUITES_DIR
@@ -456,15 +497,60 @@ def _resolve_suite_path(suite: str) -> Path:
     return path
 
 
-def create_run(suite: str, config: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+def _resolve_test_targets(suite: str, tests: list[str]) -> list[str]:
+    if not tests:
+        return []
+    if suite == "all":
+        raise ValueError("指定用例时请选择一个具体套件，不能选「全部」")
+
+    suite_dir = _resolve_suite_path(suite)
+    targets: list[str] = []
+    seen: set[str] = set()
+
+    for item in tests:
+        item = item.strip()
+        if not item:
+            continue
+        if "::" in item:
+            rel_file, test_name = item.split("::", 1)
+            test_name = test_name.strip()
+            if not test_name.startswith("test_"):
+                raise ValueError(f"无效用例名: {test_name}")
+        else:
+            rel_file = item
+            test_name = None
+
+        file_path = _resolve_suite_file(suite, rel_file.strip())
+        if test_name:
+            target = f"{file_path}::{test_name}"
+        else:
+            target = str(file_path)
+        if target not in seen:
+            seen.add(target)
+            targets.append(target)
+
+    if not targets:
+        raise ValueError("未指定有效的测试用例")
+    return targets
+
+
+def create_run(
+    suite: str,
+    config: Optional[dict[str, Any]] = None,
+    tests: Optional[list[str]] = None,
+) -> dict[str, Any]:
     global _running
     if not can_run():
         raise RuntimeError("当前环境不可运行自动化测试")
     if is_running():
         raise RuntimeError("已有测试任务在运行，请稍后再试")
 
+    selected_tests = [t.strip() for t in (tests or []) if t and t.strip()]
+    if selected_tests:
+        _resolve_test_targets(suite, selected_tests)
+
     run_config = normalize_run_config(config)
-    suite_path = _resolve_suite_path(suite)
+    _resolve_suite_path(suite)
     meta = _load_suite_meta(suite) if suite != "all" else {
         "name": "全部套件",
         "description": "运行 automation/suites 下所有用例",
@@ -472,18 +558,32 @@ def create_run(suite: str, config: Optional[dict[str, Any]] = None) -> dict[str,
     run_id = _uid()
     started = _now()
 
+    suite_display = meta.get("name", suite)
+    if selected_tests:
+        suite_display = f"{suite_display} · {len(selected_tests)} 个用例"
+
+    stored_config = dict(run_config)
+    if selected_tests:
+        stored_config["selectedTests"] = selected_tests
+
     with get_conn() as conn:
         conn.execute(
             """INSERT INTO automation_runs
                (id, suite, suite_name, status, total, passed, failed, skipped,
                 duration_ms, started_at, finished_at, log_summary, log_text, report_path, config_json)
                VALUES (?,?,?,?,0,0,0,0,0,?,NULL,'','','',?)""",
-            (run_id, suite, meta.get("name", suite), "running", started, json.dumps(run_config)),
+            (run_id, suite, suite_display, "running", started, json.dumps(stored_config)),
         )
         conn.commit()
 
     _running = run_id
-    return {"runId": run_id, "status": "running", "suite": suite, "config": run_config}
+    return {
+        "runId": run_id,
+        "status": "running",
+        "suite": suite,
+        "config": stored_config,
+        "tests": selected_tests,
+    }
 
 
 def _parse_junit(junit_path: Path, screenshots_dir: Path) -> tuple[list[dict], dict]:
@@ -569,17 +669,25 @@ def _finish_run_error(run_id: str, started: int, message: str) -> None:
         conn.commit()
 
 
-def execute_run(run_id: str, suite: str, config: Optional[dict[str, Any]] = None) -> None:
+def execute_run(
+    run_id: str,
+    suite: str,
+    config: Optional[dict[str, Any]] = None,
+    tests: Optional[list[str]] = None,
+) -> None:
     global _running
     started = _now()
     run_config = normalize_run_config(config)
+    selected_tests = [t.strip() for t in (tests or []) if t and t.strip()]
     run_dir = REPORTS_DIR / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     junit_path = run_dir / "junit.xml"
     html_path = run_dir / "report.html"
     log_path = run_dir / "output.log"
     screenshots_dir = run_dir / "screenshots"
+    artifacts_dir = run_dir / "artifacts"
     screenshots_dir.mkdir(exist_ok=True)
+    artifacts_dir.mkdir(exist_ok=True)
 
     try:
         ensure_playwright_browsers()
@@ -591,11 +699,14 @@ def execute_run(run_id: str, suite: str, config: Optional[dict[str, Any]] = None
     suite_path = _resolve_suite_path(suite)
     meta = _load_suite_meta(suite) if suite != "all" else {"name": "全部套件"}
 
+    test_targets = _resolve_test_targets(suite, selected_tests) if selected_tests else []
+    pytest_targets = test_targets if test_targets else [str(suite_path)]
+
     cmd = [
         sys.executable,
         "-m",
         "pytest",
-        str(suite_path),
+        *pytest_targets,
         "-c",
         str(AUTOMATION_DIR / "pytest.ini"),
         f"--junitxml={junit_path}",
@@ -607,6 +718,7 @@ def execute_run(run_id: str, suite: str, config: Optional[dict[str, Any]] = None
 
     env = os.environ.copy()
     env["AUTOMATION_SCREENSHOTS_DIR"] = str(screenshots_dir)
+    env["AUTOMATION_ARTIFACTS_DIR"] = str(artifacts_dir)
     _apply_run_config(cmd, env, run_config)
 
     log_text = ""
@@ -666,6 +778,7 @@ def execute_run(run_id: str, suite: str, config: Optional[dict[str, Any]] = None
     log_summary = log_text.strip().splitlines()[-1][:500] if log_text.strip() else ""
     report_rel = f"{run_id}/report.html" if html_path.is_file() else ""
     stored_log = log_text[:MAX_LOG_CHARS]
+    artifacts_index = _load_test_artifacts(artifacts_dir)
 
     with get_conn() as conn:
         conn.execute(
@@ -688,10 +801,12 @@ def execute_run(run_id: str, suite: str, config: Optional[dict[str, Any]] = None
             ),
         )
         for idx, item in enumerate(results):
+            artifact_key = _artifact_key(item["class_name"], item["test_name"])
+            artifacts = artifacts_index.get(artifact_key, {})
             conn.execute(
                 """INSERT INTO automation_results
-                   (id, run_id, test_name, class_name, status, duration_ms, error_message, screenshot)
-                   VALUES (?,?,?,?,?,?,?,?)""",
+                   (id, run_id, test_name, class_name, status, duration_ms, error_message, screenshot, artifacts_json)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
                 (
                     _uid(),
                     run_id,
@@ -701,6 +816,7 @@ def execute_run(run_id: str, suite: str, config: Optional[dict[str, Any]] = None
                     item["duration_ms"],
                     item["error_message"],
                     item["screenshot"],
+                    json.dumps(artifacts, ensure_ascii=False),
                 ),
             )
         conn.commit()

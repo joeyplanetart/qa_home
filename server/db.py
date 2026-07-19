@@ -116,7 +116,8 @@ CREATE TABLE IF NOT EXISTS automation_results (
     status        TEXT NOT NULL,
     duration_ms   INTEGER NOT NULL DEFAULT 0,
     error_message TEXT NOT NULL DEFAULT '',
-    screenshot    TEXT NOT NULL DEFAULT ''
+    screenshot    TEXT NOT NULL DEFAULT '',
+    artifacts_json TEXT NOT NULL DEFAULT ''
 );
 """
 
@@ -157,6 +158,13 @@ def _migrate_db(conn) -> None:
     if "config_json" not in cols:
         conn.execute(
             "ALTER TABLE automation_runs ADD COLUMN config_json TEXT NOT NULL DEFAULT ''"
+        )
+
+    result_rows = conn.execute("PRAGMA table_info(automation_results)").fetchall()
+    result_cols = {row[1] for row in result_rows}
+    if "artifacts_json" not in result_cols:
+        conn.execute(
+            "ALTER TABLE automation_results ADD COLUMN artifacts_json TEXT NOT NULL DEFAULT ''"
         )
 
 
