@@ -497,6 +497,17 @@
   line-height: 1.6;
 }
 
+.auto-code-box.line-numbers {
+  position: relative;
+  padding: 14px 0 14px 3.8em !important;
+  counter-reset: linenumber;
+}
+
+.auto-code-box.line-numbers > code {
+  position: relative;
+  white-space: pre;
+}
+
 .auto-code-box code[class*="language-"] {
   font-family: var(--font-mono);
   font-size: 13px;
@@ -543,12 +554,29 @@
 
 .auto-code-box .token.keyword { color: #cba6f7; }
 
-.auto-code-box .line-numbers .line-numbers-rows {
+.auto-code-box.line-numbers .line-numbers-rows {
+  position: absolute;
+  pointer-events: none;
+  top: 0;
+  left: -3.8em;
+  width: 3em;
+  font-size: 100%;
+  letter-spacing: -1px;
   border-right: 1px solid #313244;
+  user-select: none;
 }
 
-.auto-code-box .line-numbers-rows > span:before {
+.auto-code-box.line-numbers .line-numbers-rows > span {
+  display: block;
+  counter-increment: linenumber;
+}
+
+.auto-code-box.line-numbers .line-numbers-rows > span:before {
+  content: counter(linenumber);
   color: #6c7086;
+  display: block;
+  padding-right: 0.8em;
+  text-align: right;
 }
 
 .auto-code-box .line-highlight {

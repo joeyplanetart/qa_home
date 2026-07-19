@@ -314,8 +314,12 @@ function renderHighlightedCode(content, targetLine) {
   const preEl = $('codeBox');
   const codeEl = $('codeContent');
 
+  // 清除上次渲染的行号 DOM，否则插件不会重新生成
+  preEl.querySelectorAll('.line-numbers-rows, .line-numbers-sizer').forEach(el => el.remove());
+  preEl.classList.remove('line-numbers');
+
   codeEl.textContent = content;
-  codeEl.className = 'language-python';
+  codeEl.className = 'language-python line-numbers';
 
   if (targetLine) {
     preEl.setAttribute('data-line', String(targetLine));
