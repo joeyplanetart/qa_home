@@ -560,42 +560,42 @@ input:focus, textarea:focus, select:focus {
 }
 
 .project-group {
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .project-group-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
-  padding-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
   border-bottom: 2px solid var(--border-color);
 }
 
-.project-group-icon { font-size: 22px; }
+.project-group-icon { font-size: 18px; }
 
 .project-group-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .project-group-desc {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
   margin-left: auto;
 }
 
 .project-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
 }
 
 .project-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 16px;
+  border-radius: var(--radius-sm);
+  padding: 10px;
   transition: all var(--transition);
   cursor: pointer;
   position: relative;
@@ -603,8 +603,8 @@ input:focus, textarea:focus, select:focus {
 
 .project-card:hover {
   border-color: var(--accent);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
 }
 
 .project-card.selected {
@@ -615,38 +615,43 @@ input:focus, textarea:focus, select:focus {
 .project-card-top {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding-right: 36px;
 }
 
 .project-card-icon {
-  font-size: 28px;
-  width: 44px;
-  height: 44px;
+  font-size: 20px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--bg-tertiary);
   border-radius: var(--radius-sm);
+  flex-shrink: 0;
 }
 
 .project-card-name {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
 }
 
 .project-card-id {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
   font-family: var(--font-mono);
 }
 
 .project-card-domain {
-  font-size: 13px;
+  font-size: 11px;
   color: var(--text-secondary);
-  margin-bottom: 10px;
-  word-break: break-all;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .project-card-domain a { color: inherit; }
@@ -654,16 +659,16 @@ input:focus, textarea:focus, select:focus {
 
 .project-card-stats {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   flex-wrap: wrap;
 }
 
 .project-stat {
-  font-size: 11px;
+  font-size: 10px;
   background: var(--bg-tertiary);
   color: var(--text-muted);
-  padding: 3px 8px;
-  border-radius: 12px;
+  padding: 2px 6px;
+  border-radius: 10px;
   font-weight: 600;
 }
 
@@ -674,14 +679,14 @@ input:focus, textarea:focus, select:focus {
 
 .project-env-badge {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  font-size: 10px;
+  top: 8px;
+  right: 8px;
+  font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 4px;
-  letter-spacing: 0.3px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.2px;
 }
 
 .project-env-badge.prod { background: #d3f9d8; color: #2b8a3e; }
@@ -695,18 +700,18 @@ input:focus, textarea:focus, select:focus {
 .project-health {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: 4px;
+  font-size: 10px;
   font-weight: 600;
-  margin-bottom: 10px;
-  padding: 4px 8px;
-  border-radius: 6px;
+  margin-bottom: 6px;
+  padding: 2px 6px;
+  border-radius: 4px;
   width: fit-content;
 }
 
 .health-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -762,19 +767,21 @@ input:focus, textarea:focus, select:focus {
 
 .project-card-actions {
   display: flex;
-  gap: 6px;
-  margin-top: 12px;
-  padding-top: 10px;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
   border-top: 1px solid var(--border-color);
 }
 
 .btn-sm {
-  padding: 5px 10px;
-  font-size: 11px;
+  flex: 1;
+  padding: 4px 6px;
+  font-size: 10px;
   font-weight: 600;
   background: var(--bg-tertiary);
   color: var(--text-secondary);
-  border-radius: var(--radius-sm);
+  border-radius: 4px;
+  white-space: nowrap;
 }
 
 .btn-sm:hover { background: var(--accent); color: #fff; }

@@ -508,7 +508,7 @@ function renderProjectCard(p) {
           <div class="project-card-id">ID: ${p.id}</div>
         </div>
       </div>
-      <div class="project-card-domain">
+      <div class="project-card-domain" title="${escapeHTML(p.domain)}">
         <a href="${url}" target="_blank" onclick="event.stopPropagation()">${escapeHTML(p.domain)}</a>
       </div>
       ${healthHtml}
