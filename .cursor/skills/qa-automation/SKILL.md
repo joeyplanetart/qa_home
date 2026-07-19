@@ -1,0 +1,139 @@
+---
+name: qa-automation
+description: >-
+  Generate and debug Playwright + pytest UI automation tests for QA Home.
+  Use when creating test cases, Page Objects, suite scaffolding, fixing E2E
+  failures, or working in automation/ directory.
+---
+
+# QA Home UI 自动化
+
+Playwright + pytest 本地 E2E。管理页 `/automation`，代码在 `automation/`。
+
+## 快速决策
+
+| 任务 | 做法 |
+|------|------|
+| 新站点套件 | 建 `automation/suites/{id}/` + `meta.json` + `conftest.py` + `pages/` |
+| 新页面交互 | 先写/扩 Page Object，再写 `test_*.py` |
+| 新用例 | 函数名 `test_*`，优先用 fixture（`home`, `login` 等） |
+| 关键路径默认跑 | 加 `@pytest.mark.selected` |
+| 冒烟/发布前 | 加 `@pytest.mark.smoke` |
+| 产生账号/订单数据 | 用 `test_data` fixture + `record_auth` / `record_order` |
+| 调试失败 | 有头模式 → 单用例 pytest → 看截图/log |
+
+## 生成用例工作流
+
+```
+- [ ] 1. 确认套件目录与 meta.json（projectId 关联首页项目）
+- [ ] 2. Page Object：locator 用 property，动作封装为方法
+- [ ] 3. conftest.py 暴露 page fixture（如 def home(page): return HomePage(page)）
+- [ ] 4. test_*.py：一个文件一个场景域，函数 test_ 开头
+- [ ] 5. 断言用 playwright.sync_api.expect，不用 time.sleep
+- [ ] 6. 需要 UI 默认选中则加 @pytest.mark.selected
+- [ ] 7. 本地验证：pytest 单用例或 /automation 页勾选运行
+```
+
+### 目录约定
+
+```
+automation/suites/{suite_id}/
+├── meta.json          # name, description, projectId
+├── conftest.py        # 套件级 Page Object fixtures
+├── pages/
+│   ├── base.py        # BasePage：goto、关弹窗
+│   └── *.py           # 各页面 Page Object
+└── test_*.py          # 测试用例（不含 Page 类）
+```
+
+### Page Object 规则
+
+- 继承 `BasePage`，`open()` 用 `wait_until="domcontentloaded"`（不用默认 `load`）
+- Locator 优先：`get_by_role` > `get_by_placeholder` > `locator('#id')` > CSS
+- 页面常量（URL path、site_id）放 Page 模块或 `pages/base.py`
+- 不把断言写在 Page 里（断言留在 test）
+
+### 测试文件规则
+
+- 模块 docstring 说明场景域
+- 导入 Page 从 `pages.*`（套件内相对导入）
+- 测试数据：`make_test_email()` 等 helper 放 Page 模块
+- 共享记录逻辑：套件内 `_record_*` 私有函数
+
+### meta.json 模板
+
+```json
+{
+  "name": "Site E2E",
+  "description": "简短描述",
+  "projectId": 170
+}
+```
+
+`projectId` 对应 `server/static/assets/js/projects.js` 中的项目 ID。
+
+## 调试工作流
+
+```
+- [ ] 1. 读失败信息：/automation 执行结果、output.log、失败截图
+- [ ] 2. 有头复现：UI 配置 headed=true，或 pytest --headed
+- [ ] 3. 单用例：pytest path/to/test.py::test_name -v --headed
+- [ ] 4. 定位：检查 locator、弹窗遮挡、第三方脚本导致 load 超时
+- [ ] 5. 修复后跑选用例集验证无回归
+```
+
+### 常见问题
+
+| 现象 | 处理 |
+|------|------|
+| `page.goto` 超时 | 改用 `wait_until="domcontentloaded"`；检查 `dismiss_overlays()` |
+| Locator not found | 有头模式看 DOM；加 `timeout=`；检查是否在 iframe |
+| 断言 URL 失败 | CafePress 搜索可能跳 `/+keyword` 而非 `/search`，用更宽 regex |
+| site_id 169 vs 170 | B2C=170(CAFUS)；169 可能来自跨站 sync，记录 `get_site_context()` |
+| 浏览器未安装 | `./scripts/install-playwright.sh` |
+
+### 调试命令
+
+```bash
+# 单用例（有头）
+venv/bin/python -m pytest automation/suites/cafepress/test_auth.py::test_register_new_account \
+  -c automation/pytest.ini -v --headed
+
+# 收集不执行
+venv/bin/python -m pytest automation/suites/cafepress/ -c automation/pytest.ini --collect-only -q
+
+# 安装浏览器
+./scripts/install-playwright.sh
+```
+
+## pytest Markers
+
+定义见 `automation/pytest.ini`：
+
+- `selected` — UI 加载用例列表时默认勾选
+- `smoke` — 关键路径，界面显示「冒烟」徽章
+
+## 测试数据 Artifacts
+
+```python
+def test_example(page, test_data):
+    test_data.record_auth(action="register", email=email, password=pwd, ...)
+    test_data.record_order(order_id="123", email=email, total="29.99")
+```
+
+运行后写入 `reports/{runId}/artifacts/`，UI「执行结果」展示。
+
+## 全局 Fixtures
+
+`automation/conftest.py` 提供：
+
+- `test_data` — 记录业务数据
+- `browser_context_args` — 读 `AUTOMATION_VIEWPORT_*`、`AUTOMATION_LOCALE`
+- `page` — 设置 `AUTOMATION_TIMEOUT`
+- 失败自动截图到 `AUTOMATION_SCREENSHOTS_DIR`
+
+## 额外资源
+
+- 完整示例：[examples.md](examples.md)
+- 命令/API/环境变量：[reference.md](reference.md)
+- 用户文档：`docs/USAGE.md` UI 自动化章节

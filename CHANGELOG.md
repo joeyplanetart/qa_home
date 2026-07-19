@@ -19,6 +19,7 @@
 ### 变更
 - 项目文档更新：README、使用文档、部署文档补充 UI 自动化说明
 - `.gitignore` 增加 `.idea/`（PyCharm）
+- 新增 Cursor Skill：`.cursor/skills/qa-automation/`（生成/调试自动化用例）
 
 ### 修复
 - 用例源码行号与高亮定位不一致

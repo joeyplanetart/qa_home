@@ -261,6 +261,19 @@ automation/suites/{suite_id}/
 └── test_*.py           # 测试用例
 ```
 
+### Cursor Agent Skill
+
+仓库内置 Skill：`.cursor/skills/qa-automation/`
+
+在 Cursor 中生成或调试自动化用例时，Agent 会自动读取该 Skill，遵循项目的 Page Object 结构、marker、test_data 等约定。可提交到 Git 与团队共享。
+
+```
+.cursor/skills/qa-automation/
+├── SKILL.md        # 主流程：生成用例、调试
+├── examples.md     # CafePress 示例
+└── reference.md    # 命令、API、环境变量
+```
+
 ---
 
 ## 主题

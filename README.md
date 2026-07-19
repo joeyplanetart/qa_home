@@ -42,6 +42,7 @@ cp .env.example .env            # 填入 Turso Token（可选，本地可仅用 
 - [使用文档](docs/USAGE.md) — 界面操作与日常使用
 - [部署文档](docs/DEPLOY.md) — 本地开发、Turso 配置、Vercel 部署
 - [改动记录](CHANGELOG.md) — 版本更新历史
+- [Cursor Skill](.cursor/skills/qa-automation/SKILL.md) — AI 生成/调试自动化用例规范
 
 ## 项目结构
 
