@@ -113,6 +113,8 @@ uv run python run.py
 | `tools` | 工具链接 |
 | `settings` | 用户设置（主题等） |
 | `meta` | 元数据（seed 标记等） |
+| `automation_runs` | UI 自动化运行记录 |
+| `automation_results` | 单次运行的用例结果 |
 
 ### 首次启动 Seed
 
@@ -124,6 +126,23 @@ uv run python run.py
 rm -f data/qa.db data/qa.db-wal data/qa.db-shm
 ./scripts/run.sh
 ```
+
+### UI 自动化（本地）
+
+自动化测试在本地 subprocess 中执行，**不支持 Vercel Serverless**。
+
+```bash
+./scripts/install-playwright.sh   # 首次需安装 Chromium
+./scripts/run.sh
+# 访问 http://localhost:8765/automation
+```
+
+运行产物保存在 `reports/{runId}/`（git 忽略），包括：
+
+- `junit.xml` / `report.html` — 测试报告
+- `output.log` — 终端输出
+- `screenshots/` — 失败截图
+- `artifacts/` — 测试数据 JSON（账号、订单等）
 
 ---
 
@@ -185,8 +204,19 @@ Base URL: `/api`
 | GET/POST/PUT/DELETE | `/snippets` | 代码片段 CRUD |
 | GET/POST/PUT/DELETE | `/tools` | 工具链接 CRUD |
 | GET/PUT | `/settings` | 用户设置 |
-| GET | `/projects/stats` | 各项目内容统计 |
+| GET | `/projects/stats` | 各项目内容统计（含自动化用例数） |
 | POST | `/health-check` | 批量 URL 健康检查 |
+| GET | `/github-top10` | GitHub Trending |
+| GET | `/automation/status` | 自动化环境状态 |
+| GET | `/automation/suites` | 测试套件列表 |
+| GET | `/automation/suites/{id}/cases` | 套件用例列表 |
+| GET | `/automation/suites/{id}/files/{path}` | 测试源文件 |
+| GET/POST | `/automation/run` | 查询配置 / 触发运行 |
+| GET | `/automation/runs` | 运行历史 |
+| GET | `/automation/runs/{id}` | 单次运行详情 |
+| GET | `/automation/runs/{id}/log` | 运行日志 |
+| GET | `/automation/runs/{id}/report` | HTML 报告 |
+| GET | `/automation/runs/{id}/screenshots/{file}` | 失败截图 |
 
 ---
 
@@ -197,6 +227,7 @@ Base URL: `/api`
 3. **健康检查：** 后端会对外部 URL 发起 HTTP 请求，注意频率与超时（默认 5 分钟 / 次）
 4. **静态资源：** 前端文件位于 `server/static/`，修改后本地重启或重新部署生效
 5. **项目配置：** 站点列表在 `server/static/assets/js/projects.js`，属前端静态配置，改后需刷新浏览器
+6. **IDE 配置：** `.idea/`（PyCharm）已加入 `.gitignore`，无需提交
 
 ---
 

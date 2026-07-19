@@ -7,6 +7,29 @@
 ## [Unreleased]
 
 ### 新增
+- 🤖 **UI 自动化模块**：Playwright + pytest 本地执行，管理页 `/automation`
+  - 用例浏览（源码高亮、行号定位）、勾选运行、运行配置（有头/无头、视口、设备等）
+  - 执行结果、历史记录、日志、HTML 报告、失败截图
+  - 测试数据 Artifacts（注册账号、site_id 等）
+  - pytest marker：`selected`（默认勾选）、`smoke`（冒烟）
+- CafePress E2E 套件：Page Object 模块化结构（首页、搜索、商品、购物车、登录/注册）
+- 项目卡片增加 🤖 自动化用例数统计（通过 `meta.json` 的 `projectId` 关联）
+- `scripts/install-playwright.sh`：一键安装 Playwright Chromium
+
+### 变更
+- 项目文档更新：README、使用文档、部署文档补充 UI 自动化说明
+- `.gitignore` 增加 `.idea/`（PyCharm）
+
+### 修复
+- 用例源码行号与高亮定位不一致
+- 运行选中数量与执行结果不匹配（侧边栏/run 逻辑统一）
+- 默认选中状态在切换 Tab 时重复应用
+
+---
+
+## [0.2.1] - 2026-07
+
+### 新增
 - 项目文档：README、使用文档、部署文档、改动记录
 
 ---
