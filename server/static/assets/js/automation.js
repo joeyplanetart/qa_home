@@ -639,7 +639,7 @@ function renderCasesList() {
               </label>
               <div class="auto-case-item-body"
                    onclick="viewTestFile('${escapeAttr(file.path)}', '${escapeAttr(c.name)}', ${c.line})">
-                <div class="auto-case-item-name">${escapeHtml(c.name)}</div>
+                <div class="auto-case-item-name" title="${escapeAttr(c.name)}">${escapeHtml(c.name)}</div>
                 ${renderCaseMarkers(c.markers)}
                 ${c.doc ? `<div class="auto-case-item-doc">${escapeHtml(c.doc)}</div>` : ''}
                 <div class="auto-case-item-line">Line ${c.line}</div>

@@ -3,6 +3,7 @@ import pytest
 
 from pages.auth import LoginPage, RegisterPage
 from pages.cart import CartPage
+from pages.designer import DesignerPage
 from pages.homepage import HomePage
 from pages.product import ProductPage
 from pages.search import SearchPage
@@ -36,3 +37,8 @@ def product(page):
 @pytest.fixture
 def cart(page):
     return CartPage(page)
+
+
+@pytest.fixture
+def designer(page):
+    return DesignerPage(page)

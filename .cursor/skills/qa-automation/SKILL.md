@@ -21,6 +21,7 @@ Playwright + pytest 本地 E2E。管理页 `/automation`，代码在 `automation
 | 冒烟/发布前 | 加 `@pytest.mark.smoke` |
 | 产生账号/订单数据 | 用 `test_data` fixture + `record_auth` / `record_order` |
 | 调试失败 | 有头模式 → 单用例 pytest → 看截图/log |
+| CYO Designer 加购 | 见下方「CYO Designer」；上传后须选 thumbnail 再点 ADD |
 
 ## 生成用例工作流
 
@@ -80,6 +81,40 @@ automation/suites/{suite_id}/
 - [ ] 3. 单用例：pytest path/to/test.py::test_name -v --headed
 - [ ] 4. 定位：检查 locator、弹窗遮挡、第三方脚本导致 load 超时
 - [ ] 5. 修复后跑选用例集验证无回归
+- [ ] 6. 自我调试循环：写最小 repro 脚本 → 跑通关键步骤 → 回填 Page Object → 再跑 pytest
+```
+
+### 自我调试（Agent / 开发者）
+
+复杂页面（如 CYO Designer）先用独立 Playwright 脚本逐步探查 DOM 与弹窗，再落 Page Object：
+
+1. **最小 repro**：在仓库根用 `venv/bin/python` 写临时脚本，只测失败步骤（如上传、切 Back、加购）。
+2. **打印可见弹窗**：`.ui-dialog:visible` 的 title 与按钮文案，避免 overlay 挡点击。
+3. **跑通后再抽象**：把稳定 locator / 等待条件写入 `pages/*.py`，测试只调 Page 方法。
+4. **验证**：`pytest 单用例 -v`（无头）→ 失败则 `--headed` 复现 → 修 Page Object → 重跑直至通过。
+5. **截图**：步骤截图用 `AUTOMATION_SCREENSHOTS_DIR`；失败时 conftest 自动全页截图。
+
+### CYO Designer（Create Your Own）
+
+参考 `automation/suites/cafepress/pages/designer.py`、`test_cyo_designer.py`。
+
+| 步骤 | 要点 |
+|------|------|
+| PDP 选项 | `.container-option-item.Text-option-item` + `.option-text`；Position 选 `Front + Back` |
+| Color | `.container-option-item[class*='color' i]` |
+| Size | 仅匹配 `S/M/L/XL/...`，勿点到 Logo/Front/Back |
+| Personalize | 等 `.SIDE_TAB`、`.ADD_LOGO`（designer 加载慢，timeout 90s） |
+| 上传图片 | 点 `.ADD_LOGO` → `set_input_files` → **等 cloudfront thumbnail** → 点 `a.photo-tray-thumb-container` → `.btn.add` |
+| 测试图 | `automation/assert/` 下 png/jpg，可用 `random_assert_image()` |
+| 切 Back | `.SIDE_TAB a` 文本 `back`；弹出 **CONFIRM** 时点 **YES**（Apply Front to Back） |
+| 渲染等待 | 上传 Front、点 YES 应用 Back、加购前各等 **≥3s**（`AUTOMATION_DESIGN_SETTLE_MS`，默认 3000） |
+| CONFIRM 弹窗 | 须 **等待出现** 再点 YES；`count()==0` 直接 return 会漏点 |
+| 加购 | `ADD TO CART`；若 **Missing Image** 可点 PROCEED ANYWAY（完整流程应无需） |
+| 断言 | `/cart` 有 checkout、商品名含 custom men's value t-shirt |
+
+```bash
+venv/bin/python -m pytest automation/suites/cafepress/test_cyo_designer.py::test_cyo_front_back_personalize_add_to_cart \
+  -c automation/pytest.ini -v --headed
 ```
 
 ### 常见问题
@@ -90,6 +125,9 @@ automation/suites/{suite_id}/
 | Locator not found | 有头模式看 DOM；加 `timeout=`；检查是否在 iframe |
 | 断言 URL 失败 | CafePress 搜索可能跳 `/+keyword` 而非 `/search`，用更宽 regex |
 | site_id 169 vs 170 | B2C=170(CAFUS)；169 可能来自跨站 sync，记录 `get_site_context()` |
+| CYO 上传后 ADD 无效 | 须先点击 photo tray thumbnail，否则 Alert「Please select an image first」 |
+| CYO 切 Back overlay 挡点击 | 先处理 CONFIRM 对话框点 YES；或 `click(force=True)` 仅作兜底 |
+| CYO 加购 Missing Image | Front+Back 需 Back 侧有图；切 Back 后 CONFIRM→YES 应用 Front 图 |
 | 浏览器未安装 | `./scripts/install-playwright.sh` |
 
 ### 调试命令
