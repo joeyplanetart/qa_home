@@ -39,7 +39,7 @@
       <div class="auto-sidebar-title">测试套件</div>
       <div id="suiteList"></div>
 
-      <div class="auto-config" id="runConfigPanel">
+      <div class="auto-config collapsed" id="runConfigPanel">
         <button type="button" class="auto-config-toggle" id="configToggle" onclick="toggleRunConfig()">
           <span>⚙️ 运行配置</span>
           <span class="auto-config-chevron" id="configChevron">▼</span>
@@ -126,32 +126,32 @@
         </div>
       </div>
 
-      <button class="auto-run-btn" id="runSelectedBtn" onclick="runSelectedSuite()">▶ 运行选中套件</button>
+      <button class="auto-run-btn" id="runSelectedBtn" onclick="runSelectedSuite()">▶ 运行套件</button>
       <button class="auto-run-btn" style="margin-top:8px;background:var(--bg-tertiary);color:var(--text-secondary);" onclick="runAllSuites()">▶ 运行全部</button>
     </aside>
 
     <section class="auto-main">
       <div class="auto-tabs">
-        <button class="auto-tab" data-panel="cases" onclick="switchPanel('cases')">📝 测试用例</button>
-        <button class="auto-tab active" data-panel="results" onclick="switchPanel('results')">📊 执行结果</button>
+        <button class="auto-tab active" data-panel="cases" onclick="switchPanel('cases')">📝 测试用例</button>
+        <button class="auto-tab" data-panel="results" onclick="switchPanel('results')">📊 执行结果</button>
         <button class="auto-tab" data-panel="history" onclick="switchPanel('history')">📋 历史记录</button>
         <button class="auto-tab" data-panel="log" onclick="switchPanel('log')">📜 错误日志</button>
         <button class="auto-tab" data-panel="report" onclick="switchPanel('report')">📄 测试报告</button>
       </div>
 
-      <div class="auto-panel" id="panel-cases">
+      <div class="auto-panel active" id="panel-cases">
         <div class="auto-cases-layout">
           <div class="auto-cases-list" id="casesList">
             <div class="auto-empty"><div class="auto-empty-icon">📝</div>选择左侧套件查看用例</div>
           </div>
           <div class="auto-code-viewer">
             <div class="auto-code-header" id="codeHeader">选择用例查看源码</div>
-            <pre class="auto-code-box" id="codeBox" data-start="1"><code id="codeContent" class="language-python line-numbers"></code></pre>
+            <pre class="auto-code-box" id="codeBox" data-start="1"><code id="codeContent" class="language-python"></code></pre>
           </div>
         </div>
       </div>
 
-      <div class="auto-panel active" id="panel-results">
+      <div class="auto-panel" id="panel-results">
         <div class="auto-summary" id="runSummary"></div>
         <div class="auto-run-config-badge" id="runConfigBadge" style="display:none;"></div>
         <div class="auto-result-list" id="resultsList">

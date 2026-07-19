@@ -369,6 +369,16 @@
   margin-bottom: 16px;
 }
 
+.auto-run-scope-hint {
+  grid-column: 1 / -1;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .auto-stat-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
@@ -820,6 +830,31 @@
   margin-top: 2px;
 }
 
+.auto-case-item-markers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.auto-case-marker {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+}
+
+.auto-case-marker.selected {
+  color: var(--accent);
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
 .auto-code-viewer {
   display: flex;
   flex-direction: column;
@@ -843,7 +878,7 @@
 .auto-code-box {
   flex: 1;
   margin: 0 !important;
-  padding: 14px 0 !important;
+  padding: 1em 0 !important;
   overflow: auto;
   max-height: calc(100vh - 220px);
   background: #1e1e2e !important;
@@ -852,9 +887,9 @@
   line-height: 1.6;
 }
 
-.auto-code-box.line-numbers {
-  position: relative;
-  padding: 14px 0 14px 3.8em !important;
+.auto-code-box.line-numbers,
+.auto-code-box[data-line] {
+  padding: 1em 0 1em 3.8em !important;
   counter-reset: linenumber;
 }
 
@@ -865,8 +900,8 @@
 
 .auto-code-box code[class*="language-"] {
   font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: inherit;
+  line-height: inherit;
   text-shadow: none;
   background: transparent !important;
 }
@@ -915,15 +950,18 @@
   top: 0;
   left: -3.8em;
   width: 3em;
-  font-size: 100%;
+  font-size: inherit;
+  line-height: inherit;
   letter-spacing: -1px;
   border-right: 1px solid #313244;
   user-select: none;
+  padding-top: 0;
 }
 
 .auto-code-box.line-numbers .line-numbers-rows > span {
   display: block;
   counter-increment: linenumber;
+  line-height: inherit;
 }
 
 .auto-code-box.line-numbers .line-numbers-rows > span:before {
@@ -932,11 +970,14 @@
   display: block;
   padding-right: 0.8em;
   text-align: right;
+  line-height: inherit;
 }
 
 .auto-code-box .line-highlight {
   background: rgba(76, 110, 245, 0.18);
   border-left: 3px solid var(--accent);
+  margin-top: 0 !important;
+  padding: 0 !important;
 }
 
 .auto-code-box .line-highlight:before,

@@ -528,7 +528,7 @@ async def health_check(body: HealthCheckRequest) -> dict[str, Any]:
 
 @app.get("/api/projects/stats")
 def project_stats() -> dict[str, dict[str, int]]:
-    """按 project_id 统计各项目的备忘录、流程、片段数量（不含通用/跨项目）"""
+    """按 project_id 统计各项目的备忘录、流程、片段、自动化用例数量。"""
     stats: dict[int, dict[str, int]] = {}
     queries = [
         ("memos", "memos"),
@@ -544,8 +544,17 @@ def project_stats() -> dict[str, dict[str, int]]:
             for row in rows:
                 pid = row["project_id"]
                 if pid not in stats:
-                    stats[pid] = {"memos": 0, "ops": 0, "snippets": 0}
+                    stats[pid] = {"memos": 0, "ops": 0, "snippets": 0, "tests": 0}
                 stats[pid][key] = row["cnt"]
+
+    for pid, count in automation_runner.get_project_test_counts().items():
+        if pid not in stats:
+            stats[pid] = {"memos": 0, "ops": 0, "snippets": 0, "tests": 0}
+        stats[pid]["tests"] = count
+
+    for pid in stats:
+        stats[pid].setdefault("tests", 0)
+
     return {str(k): v for k, v in stats.items()}
 
 

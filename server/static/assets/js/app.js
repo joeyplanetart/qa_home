@@ -102,12 +102,13 @@ function matchesProjectFilter(item) {
 
 function getProjectStats(projectId) {
   const statsMap = getProjectStatsMap() || {};
-  const stats = statsMap[String(projectId)] || { memos: 0, ops: 0, snippets: 0 };
+  const stats = statsMap[String(projectId)] || { memos: 0, ops: 0, snippets: 0, tests: 0 };
   return {
     memos: stats.memos || 0,
     ops: stats.ops || 0,
     snippets: stats.snippets || 0,
-    total: (stats.memos || 0) + (stats.ops || 0) + (stats.snippets || 0),
+    tests: stats.tests || 0,
+    total: (stats.memos || 0) + (stats.ops || 0) + (stats.snippets || 0) + (stats.tests || 0),
   };
 }
 
@@ -516,6 +517,7 @@ function renderProjectCard(p) {
         <span class="project-stat ${stats.memos ? 'has-items' : ''}">📝 ${stats.memos}</span>
         <span class="project-stat ${stats.ops ? 'has-items' : ''}">⚙️ ${stats.ops}</span>
         <span class="project-stat ${stats.snippets ? 'has-items' : ''}">💻 ${stats.snippets}</span>
+        <span class="project-stat ${stats.tests ? 'has-items' : ''}" title="UI 自动化用例">🤖 ${stats.tests}</span>
       </div>
       <div class="project-card-actions" onclick="event.stopPropagation()">
         <button class="btn-sm primary" onclick="selectProjectAndTab(${p.id}, 'memos')">备忘录</button>

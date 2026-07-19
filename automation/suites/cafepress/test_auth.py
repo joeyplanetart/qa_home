@@ -1,6 +1,7 @@
 """CafePress 登录 / 注册测试"""
 import re
 
+import pytest
 from playwright.sync_api import Page, expect
 
 from pages.auth import (
@@ -53,6 +54,7 @@ def test_register_page_loads(register):
     assert site.get("site_code") == "CAFUS"
 
 
+@pytest.mark.selected
 def test_register_new_account(register, page: Page, test_data):
     email = make_test_email()
     register.open()
@@ -64,6 +66,7 @@ def test_register_new_account(register, page: Page, test_data):
     _record_auth_result(test_data, page, action="register", email=email)
 
 
+@pytest.mark.selected
 def test_login_with_registered_account(register, login, page: Page, test_data):
     email = make_test_email()
     register.open()

@@ -25,9 +25,10 @@ let _selectedCaseFile = null;
 let _selectedCaseName = null;
 let _casesData = null;
 let _pollTimer = null;
-let _activePanel = 'results';
+let _activePanel = 'cases';
 let _collapsedCaseFiles = new Set();
 let _checkedTests = new Set();
+let _defaultsAppliedForSuite = null;
 
 function $(id) {
   return document.getElementById(id);
@@ -178,6 +179,65 @@ function bindRunConfigEvents() {
   });
 }
 
+const MARKER_LABELS = {
+  selected: '默认',
+  smoke: '冒烟',
+};
+
+function formatMarkerLabel(marker) {
+  return MARKER_LABELS[marker] || marker;
+}
+
+function renderCaseMarkers(markers) {
+  if (!markers || !markers.length) return '';
+  return `<div class="auto-case-item-markers">${markers.map(marker => `
+    <span class="auto-case-marker ${marker === 'selected' ? 'selected' : ''}">${escapeHtml(formatMarkerLabel(marker))}</span>
+  `).join('')}</div>`;
+}
+
+function applyDefaultCaseSelection() {
+  if (!_casesData || _defaultsAppliedForSuite === _selectedSuite) return;
+  let changed = false;
+  _casesData.files.forEach(file => {
+    file.cases.forEach(c => {
+      if (c.selected) {
+        _checkedTests.add(testCaseKey(file.path, c.name));
+        if (_collapsedCaseFiles.has(file.path)) {
+          _collapsedCaseFiles.delete(file.path);
+          changed = true;
+        }
+      }
+    });
+  });
+  _defaultsAppliedForSuite = _selectedSuite;
+  if (changed) saveCollapsedCaseFiles();
+}
+
+function getSuiteTestCount() {
+  const suite = _suites.find(s => s.id === _selectedSuite);
+  return suite?.testCount || _casesData?.testCount || 0;
+}
+
+function updateRunButtons() {
+  const count = _checkedTests.size;
+  const suiteTotal = getSuiteTestCount();
+
+  const casesBtn = $('runSelectedCasesBtn');
+  if (casesBtn) {
+    casesBtn.disabled = count === 0;
+    casesBtn.textContent = count > 0
+      ? `▶ 运行选中 (${count}${suiteTotal ? `/${suiteTotal}` : ''})`
+      : '▶ 运行选中';
+  }
+
+  const sidebarBtn = $('runSelectedBtn');
+  if (sidebarBtn && !sidebarBtn.disabled) {
+    sidebarBtn.textContent = count > 0
+      ? `▶ 运行选中 (${count}${suiteTotal ? `/${suiteTotal}` : ''})`
+      : (suiteTotal > 0 ? `▶ 运行套件 (${suiteTotal})` : '▶ 运行套件');
+  }
+}
+
 function formatTime(ts) {
   if (!ts) return '-';
   return new Date(ts).toLocaleString('zh-CN', {
@@ -270,6 +330,7 @@ async function loadStatus() {
     runBtn.disabled = false;
     banner.style.display = 'none';
     stopPolling();
+    updateRunButtons();
   }
   return status;
 }
@@ -347,11 +408,16 @@ async function renderRunDetail() {
   const run = await api('GET', `/runs/${_selectedRunId}`);
 
   const configSummary = formatConfigSummary(run.config);
+  const selectedCount = run.config?.selectedTests?.length || 0;
+  const scopeHint = selectedCount > 0
+    ? `<div class="auto-run-scope-hint">本次运行 ${selectedCount} 个选用例${run.total !== selectedCount && run.status !== 'running' ? `（结果 ${run.total} 个，请确认是否误点了「运行套件」）` : ''}</div>`
+    : '';
   summaryEl.innerHTML = `
     <div class="auto-stat-card"><div class="auto-stat-value">${run.total}</div><div class="auto-stat-label">总计</div></div>
     <div class="auto-stat-card passed"><div class="auto-stat-value">${run.passed}</div><div class="auto-stat-label">通过</div></div>
     <div class="auto-stat-card failed"><div class="auto-stat-value">${run.failed}</div><div class="auto-stat-label">失败</div></div>
     <div class="auto-stat-card skipped"><div class="auto-stat-value">${run.skipped}</div><div class="auto-stat-label">跳过</div></div>
+    ${scopeHint}
   `;
 
   const configBadge = $('runConfigBadge');
@@ -412,9 +478,12 @@ function selectSuite(id) {
   _selectedCaseFile = null;
   _selectedCaseName = null;
   _checkedTests.clear();
+  _defaultsAppliedForSuite = null;
   renderSuites();
   if (_activePanel === 'cases') {
     loadCases();
+  } else {
+    updateRunButtons();
   }
 }
 
@@ -423,6 +492,7 @@ async function loadCases() {
   loadCollapsedCaseFiles();
   try {
     _casesData = await api('GET', `/suites/${encodeURIComponent(_selectedSuite)}/cases`);
+    applyDefaultCaseSelection();
     renderCasesList();
     if (_selectedCaseFile) {
       await viewTestFile(_selectedCaseFile, _selectedCaseName);
@@ -444,11 +514,7 @@ function testCaseKey(filePath, caseName) {
 }
 
 function updateCasesToolbar() {
-  const btn = $('runSelectedCasesBtn');
-  if (!btn) return;
-  const count = _checkedTests.size;
-  btn.disabled = count === 0;
-  btn.textContent = count > 0 ? `▶ 运行选中 (${count})` : '▶ 运行选中';
+  updateRunButtons();
 }
 
 function toggleCaseSelection(filePath, caseName, event) {
@@ -574,6 +640,7 @@ function renderCasesList() {
               <div class="auto-case-item-body"
                    onclick="viewTestFile('${escapeAttr(file.path)}', '${escapeAttr(c.name)}', ${c.line})">
                 <div class="auto-case-item-name">${escapeHtml(c.name)}</div>
+                ${renderCaseMarkers(c.markers)}
                 ${c.doc ? `<div class="auto-case-item-doc">${escapeHtml(c.doc)}</div>` : ''}
                 <div class="auto-case-item-line">Line ${c.line}</div>
               </div>
@@ -621,34 +688,33 @@ function renderHighlightedCode(content, targetLine) {
   const preEl = $('codeBox');
   const codeEl = $('codeContent');
 
-  // 清除上次渲染的行号 DOM，否则插件不会重新生成
+  // 清除上次渲染残留，否则 line-numbers 插件不会重新生成行号
+  preEl.querySelectorAll('.line-highlight').forEach(el => el.remove());
   preEl.querySelectorAll('.line-numbers-rows, .line-numbers-sizer').forEach(el => el.remove());
-  preEl.classList.remove('line-numbers');
+  preEl.classList.remove('line-numbers', 'linkable-line-numbers');
+  preEl.removeAttribute('data-line');
 
   codeEl.textContent = content;
   codeEl.className = 'language-python line-numbers';
 
   if (targetLine) {
     preEl.setAttribute('data-line', String(targetLine));
-  } else {
-    preEl.removeAttribute('data-line');
   }
 
   if (window.Prism) {
     Prism.highlightElement(codeEl);
-    if (targetLine && Prism.plugins.lineHighlight) {
-      Prism.plugins.lineHighlight.highlightLines(preEl);
-    }
   }
 
+  // line-highlight 插件在 complete hook 里异步执行，需延迟定位/滚动
   if (targetLine) {
-    requestAnimationFrame(() => {
-      const marker = preEl.querySelector('.line-highlight') ||
-        preEl.querySelector(`[data-range*="${targetLine}"]`);
-      if (marker) {
-        marker.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    setTimeout(() => {
+      if (Prism?.plugins?.lineHighlight) {
+        Prism.plugins.lineHighlight.highlightLines(preEl);
       }
-    });
+      const row = Prism?.plugins?.lineNumbers?.getLine(preEl, targetLine);
+      const marker = preEl.querySelector('.line-highlight');
+      (row || marker)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 30);
   }
 }
 
@@ -710,7 +776,13 @@ async function runTestFile(filePath, event) {
 
 async function runSelectedSuite() {
   try {
-    await startTestRun(null, _selectedSuite);
+    if (_checkedTests.size > 0) {
+      await runCheckedCases();
+      return;
+    }
+    const suiteTotal = getSuiteTestCount();
+    const label = suiteTotal > 0 ? `${_selectedSuite} (${suiteTotal} 个用例)` : _selectedSuite;
+    await startTestRun(null, label);
   } catch (err) {
     toast(err.message, 'error');
   }
@@ -803,7 +875,7 @@ async function init() {
   bindRunConfigEvents();
   try {
     await Promise.all([loadStatus(), loadSuites(), loadRuns()]);
-    await renderRunDetail();
+    switchPanel('cases');
   } catch (err) {
     toast('加载失败: ' + err.message, 'error');
   }

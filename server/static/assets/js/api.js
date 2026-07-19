@@ -65,7 +65,7 @@ function computeProjectStatsLocally() {
   function bump(projectId, key) {
     if (projectId === null || projectId === undefined) return;
     const id = String(projectId);
-    if (!stats[id]) stats[id] = { memos: 0, ops: 0, snippets: 0 };
+    if (!stats[id]) stats[id] = { memos: 0, ops: 0, snippets: 0, tests: 0 };
     stats[id][key] += 1;
   }
   _cache.memos.forEach(m => bump(m.projectId, 'memos'));

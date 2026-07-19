@@ -249,6 +249,26 @@ def _count_test_functions(suite_path: Path) -> int:
     return count
 
 
+def get_project_test_counts() -> dict[int, int]:
+    """按 meta.json 中的 projectId 汇总各项目的自动化用例数。"""
+    counts: dict[int, int] = {}
+    if not SUITES_DIR.is_dir():
+        return counts
+    for entry in sorted(SUITES_DIR.iterdir()):
+        if not entry.is_dir() or entry.name.startswith("."):
+            continue
+        meta = _load_suite_meta(entry.name)
+        project_id = meta.get("projectId")
+        if project_id is None:
+            continue
+        try:
+            pid = int(project_id)
+        except (TypeError, ValueError):
+            continue
+        counts[pid] = counts.get(pid, 0) + _count_test_functions(entry)
+    return counts
+
+
 def list_suites() -> list[dict[str, Any]]:
     if not SUITES_DIR.is_dir():
         return []
@@ -294,6 +314,24 @@ def _parse_module_doc(text: str) -> str:
     return ""
 
 
+def _parse_markers_above(lines: list[str], test_line_index: int) -> list[str]:
+    markers: list[str] = []
+    i = test_line_index - 1
+    while i >= 0:
+        line = lines[i].strip()
+        if not line:
+            i -= 1
+            continue
+        if line.startswith("@"):
+            for match in re.finditer(r"@pytest\.mark\.(\w+)", line):
+                markers.append(match.group(1))
+            i -= 1
+            continue
+        break
+    markers.reverse()
+    return markers
+
+
 def _parse_test_cases(text: str) -> list[dict[str, Any]]:
     cases: list[dict[str, Any]] = []
     lines = text.splitlines()
@@ -321,7 +359,27 @@ def _parse_test_cases(text: str) -> list[dict[str, Any]]:
                     doc_lines.append(lines[j].strip())
                     j += 1
                 doc = "\n".join(doc_lines).strip()
-        cases.append({"name": name, "line": idx, "doc": doc})
+        markers = _parse_markers_above(lines, idx - 1)
+        start_line = idx
+        k = idx - 2
+        while k >= 0:
+            stripped = lines[k].strip()
+            if not stripped:
+                k -= 1
+                continue
+            if stripped.startswith("@"):
+                start_line = k + 1
+                k -= 1
+                continue
+            break
+        cases.append({
+            "name": name,
+            "line": start_line,
+            "defLine": idx,
+            "doc": doc,
+            "markers": markers,
+            "selected": "selected" in markers,
+        })
     return cases
 
 
