@@ -60,8 +60,9 @@ async function api(method, path, body) {
   return res.json();
 }
 
-function formatConfigSummary(config) {
+function formatConfigSummary(config, options = {}) {
   if (!config) return '';
+  const { includeSelected = true } = options;
   const parts = [];
   parts.push(config.headed ? '有头' : '无头');
   parts.push(config.browser || 'chromium');
@@ -73,7 +74,9 @@ function formatConfigSummary(config) {
   if (config.slowMo > 0) parts.push(`慢动作 ${config.slowMo}ms`);
   if (config.video && config.video !== 'off') parts.push(`录像:${config.video}`);
   if (config.tracing && config.tracing !== 'off') parts.push(`trace:${config.tracing}`);
-  if (config.selectedTests?.length) parts.push(`${config.selectedTests.length} 个选用例`);
+  if (includeSelected && config.selectedTests?.length) {
+    parts.push(`${config.selectedTests.length} 个选用例`);
+  }
   return parts.join(' · ');
 }
 
@@ -273,7 +276,7 @@ function formatArtifactLabel(key) {
 function renderArtifacts(artifacts) {
   if (!artifacts || !Object.keys(artifacts).length) return '';
   const rows = Object.entries(artifacts)
-    .filter(([, value]) => value !== null && value !== undefined && value !== '')
+    .filter(([key, value]) => key !== 'screenshots' && value !== null && value !== undefined && value !== '')
     .map(([key, value]) => `
       <div class="auto-result-artifact-row">
         <span class="auto-result-artifact-label">${escapeHtml(formatArtifactLabel(key))}</span>
@@ -282,6 +285,28 @@ function renderArtifacts(artifacts) {
     `).join('');
   if (!rows) return '';
   return `<div class="auto-result-artifacts"><div class="auto-result-artifacts-title">测试数据</div>${rows}</div>`;
+}
+
+function renderScreenshots(runId, result) {
+  const shots = result.screenshots?.length
+    ? result.screenshots
+    : (result.screenshot ? [{ file: result.screenshot, label: '截图' }] : []);
+  if (!shots.length) return '';
+  return `
+    <div class="auto-result-shots">
+      <div class="auto-result-shots-title">步骤截图</div>
+      <div class="auto-result-shots-grid">
+        ${shots.map(shot => `
+          <figure class="auto-result-shot-card">
+            <img src="${API}/runs/${runId}/screenshots/${encodeURIComponent(shot.file)}"
+                 alt="${escapeAttr(shot.label || shot.file)}"
+                 loading="lazy"
+                 onclick="window.open(this.src,'_blank')">
+            <figcaption>${escapeHtml(shot.label || shot.file)}</figcaption>
+          </figure>
+        `).join('')}
+      </div>
+    </div>`;
 }
 
 function statusLabel(status) {
@@ -407,10 +432,19 @@ async function renderRunDetail() {
 
   const run = await api('GET', `/runs/${_selectedRunId}`);
 
-  const configSummary = formatConfigSummary(run.config);
+  const configSummary = formatConfigSummary(run.config, { includeSelected: false });
   const selectedCount = run.config?.selectedTests?.length || 0;
-  const scopeHint = selectedCount > 0
-    ? `<div class="auto-run-scope-hint">本次运行 ${selectedCount} 个选用例${run.total !== selectedCount && run.status !== 'running' ? `（结果 ${run.total} 个，请确认是否误点了「运行套件」）` : ''}</div>`
+  const scopeParts = [];
+  if (selectedCount > 0) {
+    let scopeText = `本次运行 ${selectedCount} 个选用例`;
+    if (run.total !== selectedCount && run.status !== 'running') {
+      scopeText += `（结果 ${run.total} 个，请确认是否误点了「运行套件」）`;
+    }
+    scopeParts.push(scopeText);
+  }
+  if (configSummary) scopeParts.push(configSummary);
+  const scopeHint = scopeParts.length
+    ? `<div class="auto-run-scope-hint">${escapeHtml(scopeParts.join(' · '))}</div>`
     : '';
   summaryEl.innerHTML = `
     <div class="auto-stat-card"><div class="auto-stat-value">${run.total}</div><div class="auto-stat-label">总计</div></div>
@@ -421,14 +455,7 @@ async function renderRunDetail() {
   `;
 
   const configBadge = $('runConfigBadge');
-  if (configBadge) {
-    if (configSummary) {
-      configBadge.style.display = 'block';
-      configBadge.innerHTML = `<strong>运行配置</strong> ${escapeHtml(configSummary)}`;
-    } else {
-      configBadge.style.display = 'none';
-    }
-  }
+  if (configBadge) configBadge.style.display = 'none';
 
   if (!run.results || !run.results.length) {
     resultsEl.innerHTML = run.status === 'running'
@@ -446,11 +473,7 @@ async function renderRunDetail() {
         </div>
         ${renderArtifacts(r.artifacts)}
         ${r.errorMessage ? `<div class="auto-result-error">${escapeHtml(r.errorMessage)}</div>` : ''}
-        ${r.screenshot ? `
-          <div class="auto-result-shot">
-            <img src="${API}/runs/${run.id}/screenshots/${encodeURIComponent(r.screenshot)}"
-                 alt="screenshot" onclick="window.open(this.src,'_blank')">
-          </div>` : ''}
+        ${renderScreenshots(run.id, r)}
       </div>
     `).join('');
   }

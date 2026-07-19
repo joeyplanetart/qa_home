@@ -192,12 +192,23 @@ class DesignerPage(BasePage):
             self.page.get_by_text(re.compile(r"just added to your cart", re.I))
         ).to_be_visible(timeout=30_000)
 
-    def save_screenshot(self, name: str) -> Path | None:
+    def save_screenshot(
+        self,
+        name: str,
+        *,
+        label: str | None = None,
+        test_data: object | None = None,
+    ) -> Path | None:
         screenshots_dir = os.environ.get("AUTOMATION_SCREENSHOTS_DIR", "").strip()
         if not screenshots_dir:
             return None
+        self.wait_for_design_render()
+        test_id = os.environ.get("AUTOMATION_TEST_ID", "").strip()
+        filename = f"{test_id}__{name}.png" if test_id else f"{name}.png"
         out_dir = Path(screenshots_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
-        path = out_dir / f"{name}.png"
+        path = out_dir / filename
         self.page.screenshot(path=str(path), full_page=True)
+        if test_data is not None and hasattr(test_data, "record_screenshot"):
+            test_data.record_screenshot(filename, label or name.replace("_", " "))
         return path

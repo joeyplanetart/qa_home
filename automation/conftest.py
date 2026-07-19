@@ -45,6 +45,13 @@ def browser_context_args():
     return ctx
 
 
+@pytest.fixture(autouse=True)
+def _automation_test_id(request):
+    os.environ["AUTOMATION_TEST_ID"] = _artifact_filename(request.node.nodeid)
+    yield
+    os.environ.pop("AUTOMATION_TEST_ID", None)
+
+
 @pytest.fixture
 def page(page):
     timeout = _env_int("AUTOMATION_TIMEOUT", 30000)

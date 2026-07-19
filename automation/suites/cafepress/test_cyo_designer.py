@@ -19,11 +19,11 @@ def test_cyo_front_back_personalize_add_to_cart(designer, cart: CartPage, test_d
 
     image = designer.upload_image()
     designer.switch_to_back()
-    designer.save_screenshot("cyo_designer_complete")
+    designer.save_screenshot("cyo_designer_complete", label="设计完成", test_data=test_data)
     designer.add_to_cart()
 
     cart.open()
-    designer.save_screenshot("cyo_cart_after_add")
+    designer.save_screenshot("cyo_cart_after_add", label="加购后购物车", test_data=test_data)
     expect(cart.page).to_have_url(re.compile(r"/cart", re.I))
     expect(cart.page.locator("body")).to_contain_text(
         re.compile(r"custom men's value t-shirt", re.I)

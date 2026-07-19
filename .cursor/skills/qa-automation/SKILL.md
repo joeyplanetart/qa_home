@@ -161,6 +161,16 @@ def test_example(page, test_data):
 
 运行后写入 `reports/{runId}/artifacts/`，UI「执行结果」展示。
 
+### 步骤截图
+
+用例内关键步骤调用 `save_screenshot(name, label=..., test_data=test_data)`；**截图前自动等待 ≥3s**（`AUTOMATION_DESIGN_SETTLE_MS`）让 canvas/购物车预览渲染完成。
+
+```python
+designer.save_screenshot("cyo_designer_complete", label="设计完成", test_data=test_data)
+```
+
+失败时 conftest 另存 `{testId}.png` 作为「失败截图」一并展示。
+
 ## 全局 Fixtures
 
 `automation/conftest.py` 提供：

@@ -54,6 +54,13 @@ class TestData:
             self.set("email", email)
         self.update(extra)
 
+    def record_screenshot(self, filename: str, label: str | None = None) -> None:
+        shots = self._data.setdefault("screenshots", [])
+        shots.append({
+            "file": filename,
+            "label": label or filename,
+        })
+
     def to_dict(self) -> dict[str, Any]:
         return dict(self._data)
 

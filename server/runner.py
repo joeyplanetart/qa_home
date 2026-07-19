@@ -469,6 +469,7 @@ def row_to_result(row: Any) -> dict[str, Any]:
         "errorMessage": row["error_message"],
         "screenshot": row["screenshot"],
         "artifacts": artifacts,
+        "screenshots": [],
     }
 
 
@@ -494,7 +495,18 @@ def get_run(run_id: str) -> Optional[dict[str, Any]]:
             (run_id,),
         ).fetchall()
     data = row_to_run(row)
-    data["results"] = [row_to_result(r) for r in results]
+    data["results"] = []
+    for r in results:
+        result = row_to_result(r)
+        artifact_key = _artifact_key(r["class_name"] or "", r["test_name"])
+        result["screenshots"] = _merge_test_screenshots(
+            run_id,
+            artifact_key,
+            r["screenshot"] or "",
+            result["artifacts"],
+        )
+        data["results"].append(result)
+    _associate_orphan_screenshots(run_id, data["results"])
     return data
 
 
@@ -544,6 +556,67 @@ def _load_test_artifacts(artifacts_dir: Path) -> dict[str, dict[str, Any]]:
         if isinstance(data, dict):
             index[path.stem] = data
     return index
+
+
+def _merge_test_screenshots(
+    run_id: str,
+    artifact_key: str,
+    failure_screenshot: str,
+    artifacts: dict[str, Any],
+) -> list[dict[str, str]]:
+    screenshots_dir = REPORTS_DIR / run_id / "screenshots"
+    seen: set[str] = set()
+    merged: list[dict[str, str]] = []
+
+    def add(file_name: str, label: str) -> None:
+        if not file_name or file_name in seen:
+            return
+        if (screenshots_dir / file_name).is_file():
+            seen.add(file_name)
+            merged.append({"file": file_name, "label": label})
+
+    for item in artifacts.get("screenshots") or []:
+        if isinstance(item, dict):
+            add(str(item.get("file") or ""), str(item.get("label") or item.get("file") or ""))
+
+    for path in sorted(screenshots_dir.glob(f"{artifact_key}__*.png")):
+        step = path.stem[len(artifact_key) + 2:]
+        add(path.name, step.replace("_", " "))
+
+    if failure_screenshot:
+        add(failure_screenshot, "失败截图")
+
+    return merged
+
+
+def _associate_orphan_screenshots(run_id: str, results: list[dict[str, Any]]) -> None:
+    """兼容未加 test id 前缀的步骤截图（如 cyo_designer_complete.png）。"""
+    if len(results) != 1:
+        return
+    screenshots_dir = REPORTS_DIR / run_id / "screenshots"
+    if not screenshots_dir.is_dir():
+        return
+
+    assigned = set()
+    for result in results:
+        for shot in result.get("screenshots") or []:
+            assigned.add(shot.get("file", ""))
+        if result.get("screenshot"):
+            assigned.add(result["screenshot"])
+
+    orphans = sorted(
+        path.name
+        for path in screenshots_dir.glob("*.png")
+        if path.name not in assigned and "__" not in path.stem
+    )
+    if not orphans:
+        return
+
+    shots = list(results[0].get("screenshots") or [])
+    for file_name in orphans:
+        label = file_name.removesuffix(".png").replace("_", " ")
+        shots.append({"file": file_name, "label": label})
+    results[0]["screenshots"] = shots
 
 
 def _resolve_suite_path(suite: str) -> Path:
@@ -860,7 +933,15 @@ def execute_run(
         )
         for idx, item in enumerate(results):
             artifact_key = _artifact_key(item["class_name"], item["test_name"])
-            artifacts = artifacts_index.get(artifact_key, {})
+            artifacts = dict(artifacts_index.get(artifact_key, {}))
+            screenshots = _merge_test_screenshots(
+                run_id,
+                artifact_key,
+                item["screenshot"],
+                artifacts,
+            )
+            if screenshots:
+                artifacts["screenshots"] = screenshots
             conn.execute(
                 """INSERT INTO automation_results
                    (id, run_id, test_name, class_name, status, duration_ms, error_message, screenshot, artifacts_json)
