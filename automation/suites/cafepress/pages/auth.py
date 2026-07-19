@@ -75,6 +75,31 @@ def expect_logged_in(page: Page) -> Locator:
     return page.locator('a[title="My Account"]')
 
 
+CAFEPRESS_B2C_SITE_ID = 170
+CAFEPRESS_B2B_SITE_ID = 169
+
+
+def get_site_context(page: Page) -> dict[str, str | int | None]:
+    """读取当前页面的站点上下文（SITE_ID / body class / URL）。"""
+    try:
+        ctx = page.evaluate(
+            """() => {
+                const bodyClass = document.body.className || '';
+                const match = bodyClass.match(/\\b(CAFUS|CPBUS|PCBUS)\\b/);
+                return {
+                    site_id: window.SITE_ID ?? null,
+                    site_code: match ? match[1] : null,
+                    url: window.location.href,
+                };
+            }"""
+        )
+        if isinstance(ctx, dict):
+            return ctx
+    except Exception:
+        pass
+    return {"site_id": None, "site_code": None, "url": page.url}
+
+
 def get_customer_id(page: Page) -> str | None:
     """从 cookie / 页面 JS 变量中提取 customer_id。"""
     try:

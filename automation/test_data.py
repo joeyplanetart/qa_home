@@ -25,12 +25,20 @@ class TestData:
         email: str,
         password: str,
         customer_id: str | None = None,
+        site_id: int | str | None = None,
+        site_code: str | None = None,
+        page_url: str | None = None,
+        expected_site_id: int | str | None = None,
     ) -> None:
         self.update({
             "action": action,
             "email": email,
             "password": password,
             "customer_id": customer_id,
+            "site_id": site_id,
+            "site_code": site_code,
+            "page_url": page_url,
+            "expected_site_id": expected_site_id,
         })
 
     def record_order(
