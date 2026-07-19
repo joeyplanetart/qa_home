@@ -385,8 +385,186 @@
   color: #ffd43b;
 }
 
+.auto-cases-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 14px;
+  min-height: calc(100vh - 180px);
+}
+
+.auto-cases-list {
+  overflow-y: auto;
+  max-height: calc(100vh - 180px);
+}
+
+.auto-case-file {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.auto-case-file-head {
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+}
+
+.auto-case-file-name {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.auto-case-file-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.auto-case-file-doc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.auto-case-items { padding: 6px; }
+
+.auto-case-item {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.auto-case-item:hover,
+.auto-case-item.active {
+  background: var(--accent-light);
+}
+
+.auto-case-item-name {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.auto-case-item-doc {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+.auto-case-item-line {
+  font-size: 10px;
+  color: var(--accent);
+  margin-top: 2px;
+}
+
+.auto-code-viewer {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+
+.auto-code-header {
+  padding: 10px 14px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.auto-code-box {
+  flex: 1;
+  margin: 0 !important;
+  padding: 14px 0 !important;
+  overflow: auto;
+  max-height: calc(100vh - 220px);
+  background: #1e1e2e !important;
+  border-radius: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.auto-code-box code[class*="language-"] {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  text-shadow: none;
+  background: transparent !important;
+}
+
+.auto-code-viewer pre[class*="language-"] {
+  background: #1e1e2e !important;
+}
+
+/* Prism 主题微调 — 贴近 Catppuccin */
+.auto-code-box .token.comment,
+.auto-code-box .token.prolog,
+.auto-code-box .token.doctype,
+.auto-code-box .token.cdata { color: #6c7086; }
+
+.auto-code-box .token.punctuation { color: #bac2de; }
+.auto-code-box .token.property,
+.auto-code-box .token.tag,
+.auto-code-box .token.constant,
+.auto-code-box .token.symbol,
+.auto-code-box .token.deleted { color: #f38ba8; }
+
+.auto-code-box .token.boolean,
+.auto-code-box .token.number { color: #fab387; }
+
+.auto-code-box .token.selector,
+.auto-code-box .token.attr-name,
+.auto-code-box .token.string,
+.auto-code-box .token.char,
+.auto-code-box .token.builtin { color: #a6e3a1; }
+
+.auto-code-box .token.operator,
+.auto-code-box .token.entity,
+.auto-code-box .token.url,
+.auto-code-box .token.variable { color: #89dceb; }
+
+.auto-code-box .token.atrule,
+.auto-code-box .token.attr-value,
+.auto-code-box .token.function,
+.auto-code-box .token.class-name { color: #89b4fa; }
+
+.auto-code-box .token.keyword { color: #cba6f7; }
+
+.auto-code-box .line-numbers .line-numbers-rows {
+  border-right: 1px solid #313244;
+}
+
+.auto-code-box .line-numbers-rows > span:before {
+  color: #6c7086;
+}
+
+.auto-code-box .line-highlight {
+  background: rgba(76, 110, 245, 0.18);
+  border-left: 3px solid var(--accent);
+}
+
+.auto-code-box .line-highlight:before,
+.auto-code-box .line-highlight[data-end]:after {
+  background: var(--accent);
+  box-shadow: none;
+}
+
 @media (max-width: 900px) {
   .auto-layout { grid-template-columns: 1fr; }
   .auto-sidebar { border-right: none; border-bottom: 1px solid var(--border-color); }
   .auto-summary { grid-template-columns: repeat(2, 1fr); }
+  .auto-cases-layout { grid-template-columns: 1fr; }
 }

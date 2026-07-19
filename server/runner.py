@@ -172,6 +172,108 @@ def list_suites() -> list[dict[str, Any]]:
     return suites
 
 
+def _resolve_suite_dir(suite_id: str) -> Path:
+    if suite_id == "all":
+        raise ValueError("不能浏览「全部套件」的用例，请选择具体套件")
+    path = (SUITES_DIR / suite_id).resolve()
+    if not str(path).startswith(str(SUITES_DIR.resolve())) or not path.is_dir():
+        raise ValueError(f"未知测试套件: {suite_id}")
+    return path
+
+
+def _resolve_suite_file(suite_id: str, rel_path: str) -> Path:
+    suite_dir = _resolve_suite_dir(suite_id)
+    target = (suite_dir / rel_path).resolve()
+    if not str(target).startswith(str(suite_dir)):
+        raise ValueError("非法文件路径")
+    if not target.is_file() or target.suffix != ".py":
+        raise ValueError("仅支持读取 .py 测试文件")
+    return target
+
+
+def _parse_module_doc(text: str) -> str:
+    match = re.match(r'^\s*"""(.*?)"""', text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    match = re.match(r"^\s*'''(.*?)'''", text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return ""
+
+
+def _parse_test_cases(text: str) -> list[dict[str, Any]]:
+    cases: list[dict[str, Any]] = []
+    lines = text.splitlines()
+    for idx, line in enumerate(lines, start=1):
+        match = re.match(r"^\s*def (test_\w+)\s*\(", line)
+        if not match:
+            continue
+        name = match.group(1)
+        doc = ""
+        j = idx
+        while j < len(lines) and not lines[j].strip():
+            j += 1
+        if j < len(lines) and lines[j].strip().startswith(('"""', "'''")):
+            quote = lines[j].strip()[:3]
+            doc_lines: list[str] = []
+            if lines[j].strip().count(quote) >= 2:
+                doc = lines[j].strip()[3:-3].strip()
+            else:
+                doc_lines.append(lines[j].strip()[3:])
+                j += 1
+                while j < len(lines):
+                    if quote in lines[j]:
+                        doc_lines.append(lines[j].split(quote)[0].strip())
+                        break
+                    doc_lines.append(lines[j].strip())
+                    j += 1
+                doc = "\n".join(doc_lines).strip()
+        cases.append({"name": name, "line": idx, "doc": doc})
+    return cases
+
+
+def list_suite_cases(suite_id: str) -> dict[str, Any]:
+    suite_dir = _resolve_suite_dir(suite_id)
+    meta = _load_suite_meta(suite_id)
+    files: list[dict[str, Any]] = []
+    for file_path in sorted(suite_dir.glob("**/test_*.py")):
+        rel = file_path.relative_to(suite_dir).as_posix()
+        try:
+            text = file_path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        files.append({
+            "path": rel,
+            "name": file_path.name,
+            "moduleDoc": _parse_module_doc(text),
+            "cases": _parse_test_cases(text),
+            "lineCount": len(text.splitlines()),
+        })
+    return {
+        "suiteId": suite_id,
+        "suiteName": meta.get("name", suite_id),
+        "description": meta.get("description", ""),
+        "files": files,
+        "testCount": sum(len(f["cases"]) for f in files),
+    }
+
+
+def get_test_file(suite_id: str, rel_path: str) -> dict[str, Any]:
+    target = _resolve_suite_file(suite_id, rel_path)
+    text = target.read_text(encoding="utf-8")
+    suite_dir = _resolve_suite_dir(suite_id)
+    return {
+        "suiteId": suite_id,
+        "path": target.relative_to(suite_dir).as_posix(),
+        "name": target.name,
+        "content": text,
+        "language": "python",
+        "lineCount": len(text.splitlines()),
+        "cases": _parse_test_cases(text),
+        "moduleDoc": _parse_module_doc(text),
+    }
+
+
 def row_to_run(row: Any) -> dict[str, Any]:
     return {
         "id": row["id"],

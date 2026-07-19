@@ -7,6 +7,9 @@
   <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/css/main.css">
   <link rel="stylesheet" href="assets/css/automation.css">
+  <link rel="stylesheet" href="assets/vendor/prism/prism-tomorrow.min.css">
+  <link rel="stylesheet" href="assets/vendor/prism/prism-line-numbers.min.css">
+  <link rel="stylesheet" href="assets/vendor/prism/prism-line-highlight.min.css">
 </head>
 <body>
 
@@ -41,10 +44,23 @@
 
     <section class="auto-main">
       <div class="auto-tabs">
+        <button class="auto-tab" data-panel="cases" onclick="switchPanel('cases')">📝 测试用例</button>
         <button class="auto-tab active" data-panel="results" onclick="switchPanel('results')">📊 执行结果</button>
         <button class="auto-tab" data-panel="history" onclick="switchPanel('history')">📋 历史记录</button>
         <button class="auto-tab" data-panel="log" onclick="switchPanel('log')">📜 错误日志</button>
         <button class="auto-tab" data-panel="report" onclick="switchPanel('report')">📄 测试报告</button>
+      </div>
+
+      <div class="auto-panel" id="panel-cases">
+        <div class="auto-cases-layout">
+          <div class="auto-cases-list" id="casesList">
+            <div class="auto-empty"><div class="auto-empty-icon">📝</div>选择左侧套件查看用例</div>
+          </div>
+          <div class="auto-code-viewer">
+            <div class="auto-code-header" id="codeHeader">选择用例查看源码</div>
+            <pre class="auto-code-box line-numbers" id="codeBox" data-start="1"><code id="codeContent" class="language-python"></code></pre>
+          </div>
+        </div>
       </div>
 
       <div class="auto-panel active" id="panel-results">
@@ -74,6 +90,10 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
+<script src="assets/vendor/prism/prism.min.js"></script>
+<script src="assets/vendor/prism/prism-python.min.js"></script>
+<script src="assets/vendor/prism/prism-line-numbers.min.js"></script>
+<script src="assets/vendor/prism/prism-line-highlight.min.js"></script>
 <script src="assets/js/automation.js"></script>
 </body>
 </html>

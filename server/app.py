@@ -583,6 +583,24 @@ def automation_suites() -> list[dict[str, Any]]:
     return automation_runner.list_suites()
 
 
+@app.get("/api/automation/suites/{suite_id}/cases")
+def automation_suite_cases(suite_id: str) -> dict[str, Any]:
+    try:
+        return automation_runner.list_suite_cases(suite_id)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.get("/api/automation/suites/{suite_id}/files/{file_path:path}")
+def automation_test_file(suite_id: str, file_path: str) -> dict[str, Any]:
+    try:
+        return automation_runner.get_test_file(suite_id, file_path)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(404, "文件不存在") from exc
+
+
 @app.get("/api/automation/runs")
 def automation_runs(limit: int = Query(50, ge=1, le=200)) -> list[dict[str, Any]]:
     return automation_runner.list_runs(limit=limit)

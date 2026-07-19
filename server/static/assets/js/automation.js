@@ -7,6 +7,9 @@ let _suites = [];
 let _runs = [];
 let _selectedSuite = 'cafepress';
 let _selectedRunId = null;
+let _selectedCaseFile = null;
+let _selectedCaseName = null;
+let _casesData = null;
 let _pollTimer = null;
 let _activePanel = 'results';
 
@@ -225,7 +228,121 @@ async function renderRunDetail() {
 
 function selectSuite(id) {
   _selectedSuite = id;
+  _selectedCaseFile = null;
+  _selectedCaseName = null;
   renderSuites();
+  if (_activePanel === 'cases') {
+    loadCases();
+  }
+}
+
+async function loadCases() {
+  const el = $('casesList');
+  try {
+    _casesData = await api('GET', `/suites/${encodeURIComponent(_selectedSuite)}/cases`);
+    renderCasesList();
+    if (_selectedCaseFile) {
+      await viewTestFile(_selectedCaseFile, _selectedCaseName);
+    } else if (_casesData.files.length) {
+      const first = _casesData.files[0];
+      if (first.cases.length) {
+        await viewTestFile(first.path, first.cases[0].name, first.cases[0].line);
+      } else {
+        await viewTestFile(first.path);
+      }
+    }
+  } catch (err) {
+    el.innerHTML = `<div class="auto-empty"><div class="auto-empty-icon">⚠️</div>${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderCasesList() {
+  const el = $('casesList');
+  if (!_casesData || !_casesData.files.length) {
+    el.innerHTML = '<div class="auto-empty"><div class="auto-empty-icon">📭</div>该套件暂无测试文件</div>';
+    return;
+  }
+
+  el.innerHTML = `
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
+      ${escapeHtml(_casesData.suiteName)} · ${_casesData.testCount} 个用例
+    </div>
+    ${_casesData.files.map(file => `
+      <div class="auto-case-file">
+        <div class="auto-case-file-head" onclick="viewTestFile('${escapeAttr(file.path)}')">
+          <div class="auto-case-file-name">📄 ${escapeHtml(file.name)}</div>
+          <div class="auto-case-file-meta">${file.cases.length} 用例 · ${file.lineCount} 行</div>
+          ${file.moduleDoc ? `<div class="auto-case-file-doc">${escapeHtml(file.moduleDoc)}</div>` : ''}
+        </div>
+        <div class="auto-case-items">
+          ${file.cases.map(c => `
+            <div class="auto-case-item ${_selectedCaseFile === file.path && _selectedCaseName === c.name ? 'active' : ''}"
+                 onclick="viewTestFile('${escapeAttr(file.path)}', '${escapeAttr(c.name)}', ${c.line})">
+              <div class="auto-case-item-name">${escapeHtml(c.name)}</div>
+              ${c.doc ? `<div class="auto-case-item-doc">${escapeHtml(c.doc)}</div>` : ''}
+              <div class="auto-case-item-line">Line ${c.line}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+async function viewTestFile(filePath, caseName = null, highlightLine = null) {
+  _selectedCaseFile = filePath;
+  _selectedCaseName = caseName;
+  renderCasesList();
+
+  try {
+    const file = await api('GET', `/suites/${encodeURIComponent(_selectedSuite)}/files/${filePath}`);
+    const header = $('codeHeader');
+    header.textContent = `${_selectedSuite}/${file.path}${caseName ? ' · ' + caseName : ''}`;
+
+    const targetLine = highlightLine || (caseName
+      ? (file.cases.find(c => c.name === caseName)?.line || null)
+      : null);
+
+    renderHighlightedCode(file.content, targetLine);
+  } catch (err) {
+    $('codeHeader').textContent = '加载失败';
+    renderHighlightedCode('# ' + err.message, null);
+  }
+}
+
+function renderHighlightedCode(content, targetLine) {
+  const preEl = $('codeBox');
+  const codeEl = $('codeContent');
+
+  codeEl.textContent = content;
+  codeEl.className = 'language-python';
+
+  if (targetLine) {
+    preEl.setAttribute('data-line', String(targetLine));
+  } else {
+    preEl.removeAttribute('data-line');
+  }
+
+  if (window.Prism) {
+    Prism.highlightElement(codeEl);
+    if (targetLine && Prism.plugins.lineHighlight) {
+      Prism.plugins.lineHighlight.highlightLines(preEl);
+    }
+  }
+
+  if (targetLine) {
+    requestAnimationFrame(() => {
+      const marker = preEl.querySelector('.line-highlight') ||
+        preEl.querySelector(`[data-range*="${targetLine}"]`);
+      if (marker) {
+        marker.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+    });
+  }
+}
+
+function escapeAttr(str) {
+  return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
 async function selectRun(id) {
@@ -273,6 +390,8 @@ function switchPanel(name) {
   });
   if (name === 'results' || name === 'log' || name === 'report') {
     renderRunDetail();
+  } else if (name === 'cases') {
+    loadCases();
   }
 }
 
@@ -342,5 +461,6 @@ window.runSelectedSuite = runSelectedSuite;
 window.runAllSuites = runAllSuites;
 window.switchPanel = switchPanel;
 window.toggleTheme = toggleTheme;
+window.viewTestFile = viewTestFile;
 
 document.addEventListener('DOMContentLoaded', init);
