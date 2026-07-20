@@ -35,6 +35,7 @@ const PROJECTS = [
   { id: 151, short_name: 'Devtools',     domain: 'devtools.planetart.com/deploy',                                          group: 'planetart',   icon: '🔧',  env: 'prod' },
   { id: 152, short_name: 'Cordial',      domain: 'admin.cordial.io',                                                       group: 'planetart',   icon: '📧',  env: 'prod' },
   { id: 153, short_name: 'Overlay_tool', domain: 'admin-master.pre.planetart.com/design_templates/product_effects_tool.php', group: 'planetart',   icon: '🎭',  env: 'pre' },
+  { id: 8001, short_name: 'SlazzerPlus', domain: 'ai-pre.planetart.com/api/v1/tools/slazzer_plus',                         group: 'planetart',   icon: '✂️',  env: 'pre' },
 
   { id: 169, short_name: 'CPBUS',  domain: 'www.cafepress.com/business',             group: 'cafepress',   icon: '🇺🇸',  env: 'prod' },
   { id: 170, short_name: 'CAFUS',  domain: 'www.cafepress.com',     group: 'cafepress',   icon: '🔬',  env: 'Prod' },
