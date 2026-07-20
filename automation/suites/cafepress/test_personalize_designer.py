@@ -14,7 +14,7 @@ def test_personalize_edit_text_add_to_cart(personalize, cart: CartPage, test_dat
     color = personalize.select_random_color()
     size = personalize.select_random_size()
     personalize.set_quantity(2)
-    personalize.enter_designer()
+    personalize.enter_text_designer()
 
     custom_text = personalize.edit_text_slot()
     personalize.save_screenshot("personalize_text_complete", label="文本编辑完成", test_data=test_data)

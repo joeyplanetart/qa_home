@@ -115,6 +115,11 @@ class DesignerPage(BasePage):
         expect(self.quantity_input).to_be_visible()
         self.quantity_input.fill(str(quantity))
 
+    def set_random_quantity(self, minimum: int = 2, maximum: int = 5) -> int:
+        quantity = random.randint(minimum, maximum)
+        self.set_quantity(quantity)
+        return quantity
+
     def enter_designer(self) -> None:
         expect(self.personalize_button).to_be_enabled()
         self.personalize_button.click()
@@ -148,6 +153,9 @@ class DesignerPage(BasePage):
                 if attempt == 2:
                     raise
                 self.dismiss_blocking_overlays()
+        return self._complete_image_upload(image, uploader)
+
+    def _complete_image_upload(self, image: Path, uploader: Locator) -> Path:
         uploader.locator("input[type='file']").first.set_input_files(str(image.resolve()))
         expect(self.page.locator(".ucd-uploader-dialog .ui-dialog-content img")).to_be_visible(
             timeout=90_000
