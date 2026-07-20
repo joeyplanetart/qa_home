@@ -10,7 +10,6 @@ from pages.search import SearchPage
 
 
 @pytest.mark.smoke
-@pytest.mark.selected
 def test_browse_search_and_view_product(page):
     """完整用户旅程 smoke：首页 → 搜索 → 商品详情（不含登录结账）。"""
     home = HomePage(page)

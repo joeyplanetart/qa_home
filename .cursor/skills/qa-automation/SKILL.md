@@ -22,6 +22,7 @@ Playwright + pytest 本地 E2E。管理页 `/automation`，代码在 `automation
 | 产生账号/订单数据 | 用 `test_data` fixture + `record_auth` / `record_order` |
 | 调试失败 | 有头模式 → 单用例 pytest → 看截图/log |
 | CYO Designer 加购 | 见下方「CYO Designer」；上传后须选 thumbnail 再点 ADD |
+| Personalize 加购 | 见下方「Personalize 产品」；UCD 自动弹出文本框 |
 
 ## 生成用例工作流
 
@@ -114,6 +115,27 @@ automation/suites/{suite_id}/
 
 ```bash
 venv/bin/python -m pytest automation/suites/cafepress/test_cyo_designer.py::test_cyo_front_back_personalize_add_to_cart \
+  -c automation/pytest.ini -v --headed
+```
+
+### Personalize 产品（固定 slot，如 Edit Text）
+
+参考 `automation/suites/cafepress/pages/personalize.py`、`test_personalize_designer.py`。
+
+与 CYO 区别：slot 固定，无需选 Position / 上传图片；进入 Designer 后 **自动弹出** `.UCD_TEXT_DIALOG`。
+
+| 步骤 | 要点 |
+|------|------|
+| PDP | 随机 color / size，quantity ≥ 2，点 Personalize |
+| 等 UCD | `.UCD_TEXT_DIALOG` 可见（timeout 90s） |
+| 编辑文本 | `textarea.ucd-multiline` 填入自定义文本（默认占位 `yourwordhere.`） |
+| 渲染等待 | 填文本后等 ≥3s（`AUTOMATION_DESIGN_SETTLE_MS`）再截图 |
+| 加购 | ADD TO CART；若弹出「text element that you did not edit」说明文本未生效 |
+| 截图 | `save_screenshot(..., test_data=test_data)`；购物车用 `cart.wait_for_loaded()` 后再截 |
+| 断言 | `/cart` 有 subtotal、cart id，非空购物车 |
+
+```bash
+venv/bin/python -m pytest automation/suites/cafepress/test_personalize_designer.py::test_personalize_edit_text_add_to_cart \
   -c automation/pytest.ini -v --headed
 ```
 

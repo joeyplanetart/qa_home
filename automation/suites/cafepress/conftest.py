@@ -5,6 +5,7 @@ from pages.auth import LoginPage, RegisterPage
 from pages.cart import CartPage
 from pages.designer import DesignerPage
 from pages.homepage import HomePage
+from pages.personalize import PersonalizePage
 from pages.product import ProductPage
 from pages.search import SearchPage
 
@@ -42,3 +43,8 @@ def cart(page):
 @pytest.fixture
 def designer(page):
     return DesignerPage(page)
+
+
+@pytest.fixture
+def personalize(page):
+    return PersonalizePage(page)
