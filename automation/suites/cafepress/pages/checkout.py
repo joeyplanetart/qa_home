@@ -28,7 +28,7 @@ US_ADDRESSES = [
     ("Denver", "CO", "80201"),
     ("Atlanta", "GA", "30301"),
 ]
-STREET_NAMES = ("Main St", "Oak Ave", "Maple Dr", "Cedar Ln", "Pine Rd", "Elm St")
+STREET_NAMES = ("QA Automation Ln", "Test Order Way", "Auto Ship St", "E2E Checkout Rd")
 
 
 class ShippingAddress(TypedDict):
@@ -57,36 +57,54 @@ def make_us_shipping_address() -> ShippingAddress:
 
 class CheckoutPage(BasePage):
     @property
+    def shipping_form(self) -> Locator:
+        return self.page.locator(".checkout-address-form:visible").first
+
+    @property
     def first_name_input(self) -> Locator:
-        return self.page.locator("input[name='shipping_firstname'], input[name='txtFirstName']").first
+        return self.shipping_form.locator(
+            "input[name='shipping_firstname'], input[name='txtFirstName']"
+        ).first
 
     @property
     def last_name_input(self) -> Locator:
-        return self.page.locator("input[name='shipping_lastname'], input[name='txtLastName']").first
+        return self.shipping_form.locator(
+            "input[name='shipping_lastname'], input[name='txtLastName']"
+        ).first
 
     @property
     def address1_input(self) -> Locator:
-        return self.page.locator("input[name='shipping_address1'], input[name='txtAddress1']").first
+        return self.shipping_form.locator(
+            "input[name='shipping_address1'], input[name='txtAddress1']"
+        ).first
 
     @property
     def city_input(self) -> Locator:
-        return self.page.locator("input[name='shipping_city'], input[name='txtCity']").first
+        return self.shipping_form.locator(
+            "input[name='shipping_city'], input[name='txtCity']"
+        ).first
 
     @property
     def state_select(self) -> Locator:
-        return self.page.locator("select[name='shipping_state'], select[name='txtState']").first
+        return self.shipping_form.locator(
+            "select[name='shipping_state'], select[name='txtState']"
+        ).first
 
     @property
     def zip_input(self) -> Locator:
-        return self.page.locator("input[name='shipping_zip'], input[name='txtZip']").first
+        return self.shipping_form.locator(
+            "input[name='shipping_zip'], input[name='txtZip']"
+        ).first
 
     @property
     def phone_input(self) -> Locator:
-        return self.page.locator("input[name='shipping_phone'], input[name='txtPhone']").first
+        return self.shipping_form.locator(
+            "input[name='shipping_phone'], input[name='txtPhone']"
+        ).first
 
     @property
     def country_select(self) -> Locator:
-        return self.page.locator("select[name='shipping_country']").first
+        return self.page.locator("select[name='shipping_country']:visible").first
 
     @property
     def shipping_method_radios(self) -> Locator:
@@ -103,26 +121,50 @@ class CheckoutPage(BasePage):
     def fill_shipping_address(self, address: ShippingAddress | None = None) -> ShippingAddress:
         data = address or make_us_shipping_address()
         self.wait_for_step1_ready()
-        if self.country_select.count() and self.country_select.is_visible():
+        expect(self.shipping_form).to_be_visible(timeout=30_000)
+        if self.country_select.count():
             self.country_select.select_option(value="1")
         self.first_name_input.fill(data["first_name"])
         self.last_name_input.fill(data["last_name"])
         self.address1_input.fill(data["address1"])
+        self._dismiss_address_autocomplete()
         self.city_input.fill(data["city"])
         self.state_select.select_option(value=data["state"])
         self.zip_input.fill(data["zip"])
         self.phone_input.fill(data["phone"])
+        self._dismiss_address_autocomplete()
         return data
 
     def fill_random_us_address(self) -> ShippingAddress:
         return self.fill_shipping_address(make_us_shipping_address())
 
-    def _click_continue(self, label_pattern: str) -> None:
-        button = self.page.locator("input[type='submit'], button, a, .g-btn").filter(
-            has_text=re.compile(label_pattern, re.I)
+    def _dismiss_address_autocomplete(self) -> None:
+        self.page.keyboard.press("Escape")
+        overlay = self.page.locator(
+            ".pac-container, .ui-autocomplete:visible, .address-autocomplete:visible"
         )
-        expect(button.first).to_be_visible(timeout=30_000)
-        button.first.click()
+        if overlay.count():
+            self.page.keyboard.press("Escape")
+
+    def _click_continue(self, label_pattern: str) -> None:
+        pattern = re.compile(label_pattern, re.I)
+        for selector in (
+            ".checkout-shipping-address .g-btn",
+            ".shipping-address-section .g-btn",
+            ".checkout-left .g-btn",
+            ".g-btn",
+            "a, button, input[type='submit'], input[type='button']",
+        ):
+            button = self.page.locator(selector).filter(has_text=pattern).first
+            try:
+                if button.count() and button.is_visible():
+                    button.click(force=True)
+                    return
+            except Exception:
+                continue
+        button = self.page.get_by_text(pattern).first
+        expect(button).to_be_visible(timeout=30_000)
+        button.click(force=True)
 
     def continue_to_shipping_method(self) -> None:
         self._click_continue(r"Continue to Shipping Method")

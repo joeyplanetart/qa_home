@@ -29,6 +29,9 @@ def test_mixed_cart_checkout_place_order(
     expect(expect_logged_in(page)).to_be_visible(timeout=30_000)
     test_data.set("email", checkout_account["email"])
 
+    cart.open()
+    cart.clear_all_items()
+
     add_mixed_cart_products(designer, personalize, product, quantity=1)
     designer.save_screenshot("checkout_all_added", label="全部加购完成", test_data=test_data)
 

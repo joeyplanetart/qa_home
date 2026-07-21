@@ -20,6 +20,32 @@ class CartPage(BasePage):
             re.compile(r"your (shopping )?cart is empty", re.I)
         )
 
+    def clear_all_items(self) -> None:
+        """清空购物车（避免历史残留导致多 shipment / 重复商品）。"""
+        self.open()
+        for _ in range(50):
+            remove = self.page.locator(
+                "a.remove-item, a.cart-remove, .remove-item, [title='Remove'], "
+                "a[aria-label*='Remove' i], .cart-item-remove"
+            ).first
+            if remove.count() == 0:
+                break
+            try:
+                if not remove.is_visible():
+                    break
+                remove.click(force=True)
+                self.page.wait_for_timeout(1500)
+            except Exception:
+                break
+        if re.search(r"your (shopping )?cart is empty", self.page.locator("body").inner_text(), re.I):
+            return
+        # fallback: remove via quantity 0 or delete links
+        delete_links = self.page.locator("a").filter(has_text=re.compile(r"^remove$|^delete$", re.I))
+        while delete_links.count() and delete_links.first.is_visible():
+            delete_links.first.click(force=True)
+            self.page.wait_for_timeout(1500)
+            delete_links = self.page.locator("a").filter(has_text=re.compile(r"^remove$|^delete$", re.I))
+
     @property
     def cart_link(self) -> Locator:
         return self.page.get_by_role("link", name="Cart")
