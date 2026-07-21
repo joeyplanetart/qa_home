@@ -28,7 +28,7 @@ US_ADDRESSES = [
     ("Denver", "CO", "80201"),
     ("Atlanta", "GA", "30301"),
 ]
-STREET_NAMES = ("QA Automation Ln", "Test Order Way", "Auto Ship St", "E2E Checkout Rd")
+SHIPPING_METHOD_NAMES = ("Standard", "Expedited", "Express", "Economy", "Priority")
 
 
 class ShippingAddress(TypedDict):
@@ -108,7 +108,40 @@ class CheckoutPage(BasePage):
 
     @property
     def shipping_method_radios(self) -> Locator:
-        return self.page.locator("input[type='radio']:visible")
+        return self.page.locator(
+            "input[type='radio'][name*='ship' i], "
+            "input[type='radio'][name*='method' i], "
+            ".checkout-shipping-method input[type='radio'], "
+            ".shipping-methods input[type='radio']"
+        )
+
+    @property
+    def shipping_method_cards(self) -> Locator:
+        names = "|".join(SHIPPING_METHOD_NAMES)
+        return self.page.locator("div, label, li").filter(
+            has_text=re.compile(r"delivery by", re.I)
+        ).filter(
+            has_text=re.compile(rf"\b({names})\b", re.I)
+        )
+
+    def _wait_for_checkout_spinner(self) -> None:
+        overlay = self.page.locator(".loading_spinner .spinner-overlay-bg, .spinner-overlay-bg")
+        if overlay.count():
+            try:
+                overlay.first.wait_for(state="hidden", timeout=60_000)
+            except Exception:
+                self.page.wait_for_timeout(3000)
+
+    def wait_for_step2_ready(self) -> None:
+        expect(self.page).to_have_url(
+            re.compile(r"/secure/checkout/payment\?step=2", re.I),
+            timeout=60_000,
+        )
+        expect(self.page.locator("body")).to_contain_text(
+            re.compile(r"shipping method|continue to payment", re.I),
+            timeout=60_000,
+        )
+        self._wait_for_checkout_spinner()
 
     def wait_for_step1_ready(self) -> None:
         expect(self.page).to_have_url(re.compile(r"/secure/checkout/payment\?step=1", re.I), timeout=30_000)
@@ -198,17 +231,61 @@ class CheckoutPage(BasePage):
             on_blocked=self._dismiss_address_not_verified_modal,
         )
 
-    def select_random_shipping_method(self) -> str | None:
-        self.page.wait_for_timeout(SHIPPING_SETTLE_MS)
-        radios = self.shipping_method_radios
-        expect(radios.first).to_be_visible(timeout=60_000)
-        count = radios.count()
-        if count == 0:
-            raise RuntimeError("No visible shipping methods on checkout step 2")
-        choice = radios.nth(random.randrange(count))
-        method_value = choice.get_attribute("value")
-        choice.check()
+    def _shipping_method_name(self, text: str) -> str:
+        match = re.search(
+            r"\b(" + "|".join(SHIPPING_METHOD_NAMES) + r")\b",
+            text,
+            re.I,
+        )
+        return match.group(1) if match else text.split("\n", 1)[0].strip()
+
+    def _click_shipping_option(self, option: Locator) -> str | None:
+        method_value = option.get_attribute("value")
+        option_id = option.get_attribute("id")
+        if option_id:
+            label = self.page.locator(f"label[for='{option_id}']")
+            if label.count() and label.first.is_visible():
+                label.first.click(force=True)
+                return method_value or self._shipping_method_name(label.first.inner_text())
+        option.check(force=True)
         return method_value
+
+    def _click_shipping_card(self, card: Locator) -> str:
+        text = card.inner_text()
+        card.click(force=True)
+        return self._shipping_method_name(text)
+
+    def select_random_shipping_method(self) -> str | None:
+        self.wait_for_step2_ready()
+        self.page.wait_for_timeout(SHIPPING_SETTLE_MS)
+
+        radios = self.shipping_method_radios
+        if radios.count():
+            choice = radios.nth(random.randrange(radios.count()))
+            return self._click_shipping_option(choice)
+
+        cards = [
+            self.shipping_method_cards.nth(i)
+            for i in range(self.shipping_method_cards.count())
+            if self.shipping_method_cards.nth(i).is_visible()
+        ]
+        if cards:
+            return self._click_shipping_card(random.choice(cards))
+
+        radios = self.page.locator("input[type='radio']")
+        if radios.count():
+            choice = radios.nth(random.randrange(radios.count()))
+            return self._click_shipping_option(choice)
+
+        named_options = []
+        for name in SHIPPING_METHOD_NAMES:
+            option = self.page.get_by_text(re.compile(rf"^{re.escape(name)}$", re.I))
+            if option.count() and option.first.is_visible():
+                named_options.append(option.first)
+        if named_options:
+            return self._click_shipping_card(random.choice(named_options))
+
+        raise RuntimeError("No shipping methods on checkout step 2")
 
     def continue_to_payment(self) -> None:
         self._click_continue(r"Continue to Payment")
