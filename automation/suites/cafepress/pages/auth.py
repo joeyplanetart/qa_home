@@ -5,9 +5,9 @@ import re
 import time
 import uuid
 
-from playwright.sync_api import Locator, Page
+from playwright.sync_api import Error, Locator, Page, expect
 
-from .base import BasePage
+from .base import BasePage, NAV_TIMEOUT
 
 LOGIN_PATH = "/secure/checkout/login"
 REGISTER_PATH = "/secure/checkout/register?redirect=/"
@@ -42,6 +42,11 @@ class LoginPage(BasePage):
         self.email_input.fill(email)
         self.password_input.fill(password)
         self.sign_in_button.click()
+        expect(self.page).not_to_have_url(re.compile(r"/secure/checkout/login", re.I), timeout=NAV_TIMEOUT)
+        try:
+            self.page.wait_for_load_state("domcontentloaded", timeout=NAV_TIMEOUT)
+        except Error:
+            pass
 
 
 class RegisterPage(BasePage):
