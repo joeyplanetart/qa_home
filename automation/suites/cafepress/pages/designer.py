@@ -219,12 +219,15 @@ class DesignerPage(BasePage):
         self.finish_add_to_cart()
 
     def wait_for_cart_spinner(self) -> None:
-        overlay = self.page.locator(".loading_spinner .spinner-overlay-bg, .loading_spinner:visible")
-        if overlay.count():
-            try:
-                overlay.first.wait_for(state="hidden", timeout=60_000)
-            except Exception:
-                pass
+        overlay = self.page.locator(".loading_spinner .spinner-overlay-bg")
+        try:
+            overlay.first.wait_for(state="visible", timeout=2_000)
+        except Exception:
+            return
+        try:
+            overlay.first.wait_for(state="hidden", timeout=20_000)
+        except Exception:
+            pass
 
     def finish_add_to_cart(self) -> None:
         """关闭 just added 弹窗，若在 cart 页则等 spinner 结束再进入下一件商品。"""
@@ -243,6 +246,7 @@ class DesignerPage(BasePage):
             expect(self.page.locator("body")).to_contain_text(
                 re.compile(r"shopping cart", re.I), timeout=15_000
             )
+            return
         self.wait_for_design_render()
 
     def save_screenshot(

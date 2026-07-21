@@ -12,6 +12,9 @@ CHECKOUT_PAYMENT_STEP1 = "/secure/checkout/payment?step=1"
 
 class CartPage(BasePage):
     def open(self, path: str = "/cart") -> None:
+        if re.search(r"/cart/?(\?|$)", self.page.url, re.I):
+            self.wait_for_cart_update()
+            return
         super().open(path)
 
     @property
@@ -64,11 +67,14 @@ class CartPage(BasePage):
     def wait_for_cart_update(self) -> None:
         """Promo / 价格更新后等待 loading overlay 消失。"""
         overlay = self.page.locator(".loading_spinner .spinner-overlay-bg")
-        if overlay.count():
-            try:
-                overlay.first.wait_for(state="hidden", timeout=60_000)
-            except Exception:
-                self.page.wait_for_timeout(3000)
+        try:
+            overlay.first.wait_for(state="visible", timeout=2_000)
+        except Exception:
+            return
+        try:
+            overlay.first.wait_for(state="hidden", timeout=20_000)
+        except Exception:
+            self.page.wait_for_timeout(1000)
 
     def apply_promo_code(self, code: str) -> None:
         expect(self.promo_code_input).to_be_visible()

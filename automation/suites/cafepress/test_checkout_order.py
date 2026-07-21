@@ -23,7 +23,7 @@ def test_mixed_cart_checkout_place_order(
     page,
     test_data,
 ):
-    """登录 → CYO/PER/普通商品加购 → promo → 填写地址 → 下单并记录 order number。"""
+    """登录 → CYO/PER/普通商品(3)加购 → promo → 填写地址 → 下单并记录 order number。"""
     login.open()
     login.sign_in(checkout_account["email"], checkout_account["password"])
     expect(expect_logged_in(page)).to_be_visible(timeout=30_000)
@@ -37,7 +37,7 @@ def test_mixed_cart_checkout_place_order(
 
     cart.open()
     cart.wait_for_cart_update()
-    expect(cart.remove_links).to_have_count(4)
+    expect(cart.remove_links).to_have_count(6)
     cart.wait_for_loaded()
     cart.apply_promo_code(PROMO_CODE)
     designer.save_screenshot("checkout_cart_promo", label="Promo 已应用", test_data=test_data)

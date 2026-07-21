@@ -68,8 +68,10 @@ def add_mixed_cart_products(
     *,
     quantity: int = 1,
 ) -> None:
-    """CYO + PER 文本 + PER 图片 + 1 件普通商品（下单用，避免多件普通商品跳转 /cart 重复加购）。"""
+    """CYO + PER 文本 + PER 图片 + 女款 T 恤 + 马克杯 + 托特包。"""
     add_cyo_product(designer, quantity=quantity)
     add_personalize_text_product(personalize, quantity=quantity)
     add_personalize_image_product(personalize, quantity=quantity)
     add_standard_shirt(product, quantity=quantity)
+    add_standard_mug(product, quantity=quantity)
+    add_standard_tote(product, quantity=quantity)
