@@ -216,6 +216,34 @@ class DesignerPage(BasePage):
         expect(
             self.page.get_by_text(re.compile(r"just added to your cart", re.I))
         ).to_be_visible(timeout=30_000)
+        self.finish_add_to_cart()
+
+    def wait_for_cart_spinner(self) -> None:
+        overlay = self.page.locator(".loading_spinner .spinner-overlay-bg, .loading_spinner:visible")
+        if overlay.count():
+            try:
+                overlay.first.wait_for(state="hidden", timeout=60_000)
+            except Exception:
+                pass
+
+    def finish_add_to_cart(self) -> None:
+        """关闭 just added 弹窗，若在 cart 页则等 spinner 结束再进入下一件商品。"""
+        dialog = self.page.locator(".ui-dialog:visible").filter(
+            has_text=re.compile(r"just added to your cart", re.I)
+        )
+        if dialog.count():
+            close = dialog.locator(".ui-dialog-titlebar-close")
+            if close.count():
+                close.first.click()
+            else:
+                self.page.keyboard.press("Escape")
+            expect(dialog).to_be_hidden(timeout=10_000)
+        if re.search(r"/cart", self.page.url, re.I):
+            self.wait_for_cart_spinner()
+            expect(self.page.locator("body")).to_contain_text(
+                re.compile(r"shopping cart", re.I), timeout=15_000
+            )
+        self.wait_for_design_render()
 
     def save_screenshot(
         self,

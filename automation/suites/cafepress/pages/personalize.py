@@ -96,3 +96,4 @@ class PersonalizePage(DesignerPage):
         expect(
             self.page.get_by_text(re.compile(r"just added to your cart", re.I))
         ).to_be_visible(timeout=30_000)
+        self.finish_add_to_cart()

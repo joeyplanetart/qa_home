@@ -36,6 +36,8 @@ def test_mixed_cart_checkout_place_order(
     designer.save_screenshot("checkout_all_added", label="全部加购完成", test_data=test_data)
 
     cart.open()
+    cart.wait_for_cart_update()
+    expect(cart.remove_links).to_have_count(4)
     cart.wait_for_loaded()
     cart.apply_promo_code(PROMO_CODE)
     designer.save_screenshot("checkout_cart_promo", label="Promo 已应用", test_data=test_data)

@@ -14,37 +14,36 @@ class CartPage(BasePage):
     def open(self, path: str = "/cart") -> None:
         super().open(path)
 
-    def wait_for_loaded(self) -> None:
-        expect(self.page.locator("body")).to_contain_text(re.compile(r"shopping cart", re.I))
-        expect(self.page.locator("body")).not_to_contain_text(
-            re.compile(r"your (shopping )?cart is empty", re.I)
-        )
+    @property
+    def remove_links(self) -> Locator:
+        return self.page.get_by_role("link", name=re.compile(r"^Remove$", re.I))
+
+    def item_count(self) -> int:
+        return self.remove_links.count()
 
     def clear_all_items(self) -> None:
         """清空购物车（避免历史残留导致多 shipment / 重复商品）。"""
         self.open()
-        for _ in range(50):
-            remove = self.page.locator(
-                "a.remove-item, a.cart-remove, .remove-item, [title='Remove'], "
-                "a[aria-label*='Remove' i], .cart-item-remove"
-            ).first
-            if remove.count() == 0:
-                break
-            try:
-                if not remove.is_visible():
-                    break
-                remove.click(force=True)
-                self.page.wait_for_timeout(1500)
-            except Exception:
-                break
+        self.wait_for_cart_update()
         if re.search(r"your (shopping )?cart is empty", self.page.locator("body").inner_text(), re.I):
             return
-        # fallback: remove via quantity 0 or delete links
-        delete_links = self.page.locator("a").filter(has_text=re.compile(r"^remove$|^delete$", re.I))
-        while delete_links.count() and delete_links.first.is_visible():
-            delete_links.first.click(force=True)
-            self.page.wait_for_timeout(1500)
-            delete_links = self.page.locator("a").filter(has_text=re.compile(r"^remove$|^delete$", re.I))
+        for _ in range(50):
+            self.wait_for_cart_update()
+            if self.item_count() == 0:
+                break
+            self.remove_links.first.click(force=True)
+            self.wait_for_cart_update()
+        expect(self.page.locator("body")).to_contain_text(
+            re.compile(r"your (shopping )?cart is empty", re.I),
+            timeout=60_000,
+        )
+
+    def wait_for_loaded(self) -> None:
+        self.wait_for_cart_update()
+        expect(self.page.locator("body")).to_contain_text(re.compile(r"shopping cart", re.I))
+        expect(self.page.locator("body")).not_to_contain_text(
+            re.compile(r"your (shopping )?cart is empty", re.I)
+        )
 
     @property
     def cart_link(self) -> Locator:
