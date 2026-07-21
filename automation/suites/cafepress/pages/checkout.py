@@ -5,7 +5,7 @@ import os
 import random
 import re
 import uuid
-from typing import TypedDict
+from typing import Callable, TypedDict
 
 from playwright.sync_api import Locator, expect
 
@@ -166,9 +166,37 @@ class CheckoutPage(BasePage):
         expect(button).to_be_visible(timeout=30_000)
         button.click(force=True)
 
+    def _dismiss_address_not_verified_modal(self) -> bool:
+        """随机测试地址常无法通过校验；弹窗出现时点击 CONTINUE ANYWAY。"""
+        title = self.page.get_by_text(re.compile(r"address not verified", re.I))
+        if not title.count() or not title.first.is_visible():
+            return False
+        self._click_continue(r"continue anyway")
+        return True
+
+    def _advance_to_checkout_step(
+        self,
+        step: int,
+        *,
+        on_blocked: Callable[[], bool] | None = None,
+        timeout_ms: int = 60_000,
+    ) -> None:
+        url_pattern = re.compile(rf"/secure/checkout/payment\?step={step}", re.I)
+        polls = max(1, timeout_ms // 500)
+        for _ in range(polls):
+            if url_pattern.search(self.page.url):
+                return
+            if on_blocked and on_blocked():
+                continue
+            self.page.wait_for_timeout(500)
+        expect(self.page).to_have_url(url_pattern, timeout=5_000)
+
     def continue_to_shipping_method(self) -> None:
         self._click_continue(r"Continue to Shipping Method")
-        expect(self.page).to_have_url(re.compile(r"/secure/checkout/payment\?step=2", re.I), timeout=60_000)
+        self._advance_to_checkout_step(
+            2,
+            on_blocked=self._dismiss_address_not_verified_modal,
+        )
 
     def select_random_shipping_method(self) -> str | None:
         self.page.wait_for_timeout(SHIPPING_SETTLE_MS)
