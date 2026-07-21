@@ -38,7 +38,7 @@ def test_mixed_cart_checkout_place_order(
     designer.save_screenshot("checkout_cart_promo", label="Promo 已应用", test_data=test_data)
     cart.proceed_to_checkout()
 
-    expect(page).to_have_url(re.compile(r"/secure/checkout/payment\?step=1", re.I))
+    checkout.wait_for_step1_ready()
     address = checkout.fill_random_us_address()
     designer.save_screenshot("checkout_shipping_address", label="收货地址", test_data=test_data)
     checkout.continue_to_shipping_method()

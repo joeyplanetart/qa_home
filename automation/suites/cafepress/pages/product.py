@@ -105,5 +105,21 @@ class ProductPage(DesignerPage):
         just_added = self.page.get_by_text(re.compile(r"just added to your cart", re.I))
         try:
             expect(just_added).to_be_visible(timeout=8_000)
+            self._dismiss_just_added_dialog()
         except AssertionError:
             expect(self.page).to_have_url(re.compile(r"/cart", re.I), timeout=30_000)
+            expect(self.page.locator("body")).to_contain_text(
+                re.compile(r"shopping cart", re.I), timeout=15_000
+            )
+
+    def _dismiss_just_added_dialog(self) -> None:
+        dialog = self.page.locator(".ui-dialog:visible").filter(
+            has_text=re.compile(r"just added to your cart", re.I)
+        )
+        if dialog.count() == 0:
+            return
+        close = dialog.locator(".ui-dialog-titlebar-close")
+        if close.count():
+            close.first.click()
+            return
+        self.page.keyboard.press("Escape")

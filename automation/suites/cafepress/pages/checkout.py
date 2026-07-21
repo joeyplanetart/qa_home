@@ -58,43 +58,53 @@ def make_us_shipping_address() -> ShippingAddress:
 class CheckoutPage(BasePage):
     @property
     def first_name_input(self) -> Locator:
-        return self.page.locator("input[name='txtFirstName']")
+        return self.page.locator("input[name='shipping_firstname'], input[name='txtFirstName']").first
 
     @property
     def last_name_input(self) -> Locator:
-        return self.page.locator("input[name='txtLastName']")
+        return self.page.locator("input[name='shipping_lastname'], input[name='txtLastName']").first
 
     @property
     def address1_input(self) -> Locator:
-        return self.page.locator("input[name='txtAddress1']")
+        return self.page.locator("input[name='shipping_address1'], input[name='txtAddress1']").first
 
     @property
     def city_input(self) -> Locator:
-        return self.page.locator("input[name='txtCity']")
+        return self.page.locator("input[name='shipping_city'], input[name='txtCity']").first
 
     @property
     def state_select(self) -> Locator:
-        return self.page.locator("select[name='txtState']")
+        return self.page.locator("select[name='shipping_state'], select[name='txtState']").first
 
     @property
     def zip_input(self) -> Locator:
-        return self.page.locator("input[name='txtZip']")
+        return self.page.locator("input[name='shipping_zip'], input[name='txtZip']").first
 
     @property
     def phone_input(self) -> Locator:
-        return self.page.locator("input[name='txtPhone']")
+        return self.page.locator("input[name='shipping_phone'], input[name='txtPhone']").first
+
+    @property
+    def country_select(self) -> Locator:
+        return self.page.locator("select[name='shipping_country']").first
 
     @property
     def shipping_method_radios(self) -> Locator:
         return self.page.locator("input[type='radio']:visible")
 
+    def wait_for_step1_ready(self) -> None:
+        expect(self.page).to_have_url(re.compile(r"/secure/checkout/payment\?step=1", re.I), timeout=30_000)
+        expect(self.first_name_input).to_be_visible(timeout=30_000)
+
     def open_step1(self) -> None:
         self.open(CHECKOUT_PAYMENT_STEP1)
-        expect(self.page).to_have_url(re.compile(r"/secure/checkout/payment\?step=1", re.I))
+        self.wait_for_step1_ready()
 
     def fill_shipping_address(self, address: ShippingAddress | None = None) -> ShippingAddress:
         data = address or make_us_shipping_address()
-        expect(self.first_name_input).to_be_visible(timeout=30_000)
+        self.wait_for_step1_ready()
+        if self.country_select.count() and self.country_select.is_visible():
+            self.country_select.select_option(value="1")
         self.first_name_input.fill(data["first_name"])
         self.last_name_input.fill(data["last_name"])
         self.address1_input.fill(data["address1"])

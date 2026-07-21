@@ -73,3 +73,8 @@ class CartPage(BasePage):
             re.compile(r"/secure/checkout/payment\?step=1", re.I),
             timeout=30_000,
         )
+        expect(
+            self.page.locator(
+                "input[name='shipping_firstname'], input[name='txtFirstName']"
+            ).first
+        ).to_be_visible(timeout=30_000)

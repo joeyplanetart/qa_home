@@ -199,10 +199,10 @@ venv/bin/python -m pytest automation/suites/cafepress/test_standard_product.py \
 | 步骤 | 要点 |
 |------|------|
 | 登录 | `/secure/checkout/login`，登录后 header 有 My Account |
-| 加购 | CYO + PER 文本 + PER 图片 + 女款 T 恤 + 马克杯 + 托特包（`flows/add_products.py`） |
+| 加购 | CYO + PER 文本 + PER 图片 + 1 件普通 T 恤（`flows/add_products.py`） |
 | Promo | Cart 页 `input[name='promo code']` → Apply；断言 promo 已生效 |
 | Checkout | `.container-checkout.btn-checkout`；spinner 挡点击时 fallback 到 `?step=1` |
-| 地址 step=1 | `txtFirstName/LastName/Address1/City/State/Zip/Phone` → Continue to Shipping Method |
+| 地址 step=1 | 登录用 `shipping_firstname` 等；访客可能为 `txtFirstName` 等 → Continue to Shipping Method |
 | 配送 step=2 | 等 ≥3s → 随机 visible radio → Continue to Payment |
 | 支付 step=3 | Place Your Order（timeout 默认 120s） |
 | 确认 | `/secure/checkout/confirm_order`，记录 `Your order number is {orderNo}` |
