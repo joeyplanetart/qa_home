@@ -18,12 +18,13 @@ ASSERT_DIR = Path(__file__).resolve().parents[3] / "assert"
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp"}
 SIZE_PATTERN = re.compile(r"^(S|M|L|XL|XLT|2XL|2XLT|3XL|3XLT|4XL|5XL)$", re.I)
 DESIGN_SETTLE_MS = int(os.environ.get("AUTOMATION_DESIGN_SETTLE_MS", "3000"))
-UPLOAD_READY_JS = """
-() => {
-  const img = document.querySelector('.ucd-uploader-dialog .ui-dialog-content img');
-  return Boolean(
-    img && img.src.includes('cloudfront.net') && img.complete && img.naturalWidth > 0
-  );
+UPLOAD_THUMB_READY_JS = """
+(thumbIndex) => {
+  const thumbs = document.querySelectorAll('.ucd-uploader-dialog a.photo-tray-thumb-container');
+  const thumb = thumbs[thumbIndex];
+  if (!thumb) return false;
+  const img = thumb.querySelector('img[src*="cloudfront.net"]');
+  return Boolean(img && img.complete && img.naturalWidth > 0);
 }
 """
 
@@ -156,14 +157,14 @@ class DesignerPage(BasePage):
         return self._complete_image_upload(image, uploader)
 
     def _complete_image_upload(self, image: Path, uploader: Locator) -> Path:
+        thumbs = uploader.locator("a.photo-tray-thumb-container")
+        before_count = thumbs.count()
         uploader.locator("input[type='file']").first.set_input_files(str(image.resolve()))
-        expect(self.page.locator(".ucd-uploader-dialog .ui-dialog-content img")).to_be_visible(
-            timeout=90_000
-        )
-        self.page.wait_for_function(UPLOAD_READY_JS, timeout=90_000)
-        thumb = uploader.locator("a.photo-tray-thumb-container").first
-        expect(thumb).to_be_visible()
-        thumb.click()
+        expect(thumbs).to_have_count(before_count + 1, timeout=90_000)
+        new_thumb = thumbs.nth(before_count)
+        expect(new_thumb).to_be_visible()
+        self.page.wait_for_function(UPLOAD_THUMB_READY_JS, before_count, timeout=90_000)
+        new_thumb.click()
         uploader.locator(".btn.add").click()
         expect(uploader).to_be_hidden(timeout=30_000)
         self.wait_for_design_render()
