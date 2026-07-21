@@ -20,6 +20,10 @@
 | `AUTOMATION_LOCALE` | 浏览器 locale |
 | `AUTOMATION_SCREENSHOTS_DIR` | 失败截图目录 |
 | `AUTOMATION_ARTIFACTS_DIR` | test_data JSON 目录 |
+| `AUTOMATION_CAFPRESS_CHECKOUT_EMAIL` | 下单用例登录邮箱 |
+| `AUTOMATION_CAFPRESS_CHECKOUT_PASSWORD` | 下单用例登录密码 |
+| `AUTOMATION_CHECKOUT_TIMEOUT` | 下单流程默认超时 ms，默认 120000 |
+| `AUTOMATION_PLACE_ORDER_TIMEOUT_MS` | Place Order 等待确认页 ms，默认 120000 |
 
 UI 运行配置存 `localStorage`，后端通过 pytest 参数 `--headed`、`--browser` 等传递。
 

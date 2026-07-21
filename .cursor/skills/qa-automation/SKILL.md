@@ -24,6 +24,7 @@ Playwright + pytest 本地 E2E。管理页 `/automation`，代码在 `automation
 | CYO Designer 加购 | 见下方「CYO Designer」；上传后须选 thumbnail 再点 ADD |
 | Personalize 加购 | 见下方「Personalize 产品」；文本 slot 或 image slot |
 | 普通商品加购 | 见下方「普通商品 PDP」；选 color/size/qty 后直接 ADD TO CART |
+| 混合购物车下单 | 见下方「混合购物车下单」；需 env 账号，会真实下单 |
 
 ## 生成用例工作流
 
@@ -182,6 +183,35 @@ venv/bin/python -m pytest automation/suites/cafepress/test_personalize_image.py:
 
 ```bash
 venv/bin/python -m pytest automation/suites/cafepress/test_standard_product.py \
+  -c automation/pytest.ini -v --headed
+```
+
+### 混合购物车下单
+
+参考 `pages/cart.py`、`pages/checkout.py`、`flows/add_products.py`、`test_checkout_order.py`。
+
+**会真实下单**，运行前设置账号环境变量（勿提交密码到仓库）：
+
+```bash
+export AUTOMATION_CAFPRESS_CHECKOUT_EMAIL='your@email.com'
+export AUTOMATION_CAFPRESS_CHECKOUT_PASSWORD='your-password'
+export AUTOMATION_CHECKOUT_TIMEOUT=120000
+export AUTOMATION_PLACE_ORDER_TIMEOUT_MS=120000
+```
+
+| 步骤 | 要点 |
+|------|------|
+| 登录 | `/secure/checkout/login`，登录后 header 有 My Account |
+| 加购 | CYO + PER 文本 + PER 图片 + 女款 T 恤 + 马克杯 + 托特包（`flows/add_products.py`） |
+| Promo | Cart 页 `input[name='promo code']` → Apply；断言 promo 已生效 |
+| Checkout | `.container-checkout.btn-checkout`；spinner 挡点击时 fallback 到 `?step=1` |
+| 地址 step=1 | `txtFirstName/LastName/Address1/City/State/Zip/Phone` → Continue to Shipping Method |
+| 配送 step=2 | 等 ≥3s → 随机 visible radio → Continue to Payment |
+| 支付 step=3 | Place Your Order（timeout 默认 120s） |
+| 确认 | `/secure/checkout/confirm_order`，记录 `Your order number is {orderNo}` |
+
+```bash
+venv/bin/python -m pytest automation/suites/cafepress/test_checkout_order.py::test_mixed_cart_checkout_place_order \
   -c automation/pytest.ini -v --headed
 ```
 
