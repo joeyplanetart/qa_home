@@ -163,7 +163,7 @@ class DesignerPage(BasePage):
         expect(thumbs).to_have_count(before_count + 1, timeout=90_000)
         new_thumb = thumbs.nth(before_count)
         expect(new_thumb).to_be_visible()
-        self.page.wait_for_function(UPLOAD_THUMB_READY_JS, before_count, timeout=90_000)
+        self.page.wait_for_function(UPLOAD_THUMB_READY_JS, arg=before_count, timeout=90_000)
         new_thumb.click()
         uploader.locator(".btn.add").click()
         expect(uploader).to_be_hidden(timeout=30_000)
