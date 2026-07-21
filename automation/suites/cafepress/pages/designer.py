@@ -18,13 +18,24 @@ ASSERT_DIR = Path(__file__).resolve().parents[3] / "assert"
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp"}
 SIZE_PATTERN = re.compile(r"^(S|M|L|XL|XLT|2XL|2XLT|3XL|3XLT|4XL|5XL)$", re.I)
 DESIGN_SETTLE_MS = int(os.environ.get("AUTOMATION_DESIGN_SETTLE_MS", "3000"))
-UPLOAD_THUMB_READY_JS = """
-(thumbIndex) => {
-  const thumbs = document.querySelectorAll('.ucd-uploader-dialog a.photo-tray-thumb-container');
-  const thumb = thumbs[thumbIndex];
-  if (!thumb) return false;
-  const img = thumb.querySelector('img[src*="cloudfront.net"]');
-  return Boolean(img && img.complete && img.naturalWidth > 0);
+UPLOAD_DONE_JS = """
+(beforeCount) => {
+  const dialog = document.querySelector('.ucd-uploader-dialog');
+  if (!dialog) return false;
+  const thumbs = dialog.querySelectorAll('a.photo-tray-thumb-container');
+  if (!thumbs.length) return false;
+  const candidates = [];
+  if (thumbs.length > beforeCount) candidates.push(thumbs[beforeCount]);
+  const selected = dialog.querySelector(
+    'a.photo-tray-thumb-container.selected, a.photo-tray-thumb-container.active'
+  );
+  if (selected) candidates.push(selected);
+  candidates.push(thumbs[thumbs.length - 1]);
+  return candidates.some((thumb) => {
+    if (!thumb) return false;
+    const img = thumb.querySelector('img[src*="cloudfront.net"]');
+    return Boolean(img && img.complete && img.naturalWidth > 0);
+  });
 }
 """
 
@@ -156,16 +167,33 @@ class DesignerPage(BasePage):
                 self.dismiss_blocking_overlays()
         return self._complete_image_upload(image, uploader)
 
+    def _pick_upload_thumb(self, uploader: Locator, before_count: int) -> Locator:
+        thumbs = uploader.locator("a.photo-tray-thumb-container")
+        if thumbs.count() > before_count:
+            return thumbs.nth(before_count)
+        selected = uploader.locator(
+            "a.photo-tray-thumb-container.selected, a.photo-tray-thumb-container.active"
+        )
+        if selected.count():
+            return selected.first
+        return thumbs.last
+
+    def _click_uploader_add(self, uploader: Locator) -> None:
+        add_btn = uploader.get_by_role("button", name=re.compile(r"^ADD$", re.I))
+        if add_btn.count() == 0:
+            add_btn = uploader.locator(".btn.add").filter(has_text=re.compile(r"^ADD$", re.I))
+        expect(add_btn.first).to_be_visible(timeout=15_000)
+        add_btn.first.click(force=True)
+
     def _complete_image_upload(self, image: Path, uploader: Locator) -> Path:
         thumbs = uploader.locator("a.photo-tray-thumb-container")
         before_count = thumbs.count()
         uploader.locator("input[type='file']").first.set_input_files(str(image.resolve()))
-        expect(thumbs).to_have_count(before_count + 1, timeout=90_000)
-        new_thumb = thumbs.nth(before_count)
-        expect(new_thumb).to_be_visible()
-        self.page.wait_for_function(UPLOAD_THUMB_READY_JS, arg=before_count, timeout=90_000)
-        new_thumb.click()
-        uploader.locator(".btn.add").click()
+        self.page.wait_for_function(UPLOAD_DONE_JS, arg=before_count, timeout=90_000)
+        thumb = self._pick_upload_thumb(uploader, before_count)
+        expect(thumb).to_be_visible()
+        thumb.click()
+        self._click_uploader_add(uploader)
         expect(uploader).to_be_hidden(timeout=30_000)
         self.wait_for_design_render()
         self.last_image = image.name

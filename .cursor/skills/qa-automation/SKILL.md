@@ -221,7 +221,7 @@ venv/bin/python -m pytest automation/suites/cafepress/test_checkout_order.py::te
 | 断言 URL 失败 | CafePress 搜索可能跳 `/+keyword` 而非 `/search`，用更宽 regex |
 | site_id 169 vs 170 | B2C=170(CAFUS)；169 可能来自跨站 sync，记录 `get_site_context()` |
 | CYO 上传后 ADD 无效 | 须先点击 photo tray thumbnail，否则 Alert「Please select an image first」 |
-| 登录账号 photo tray 很多 | 上传后点**新增**缩略图（按上传前 count 取 `nth(before_count)`），勿用 `.first` |
+| 登录账号 photo tray 很多 | 上传后选已加载 cloudfront 的缩略图（新增/selected/last），再点弹窗内 **ADD** |
 | CYO 切 Back overlay 挡点击 | 先处理 CONFIRM 对话框点 YES；或 `click(force=True)` 仅作兜底 |
 | CYO 加购 Missing Image | Front+Back 需 Back 侧有图；切 Back 后 CONFIRM→YES 应用 Front 图 |
 | 浏览器未安装 | `./scripts/install-playwright.sh` |
