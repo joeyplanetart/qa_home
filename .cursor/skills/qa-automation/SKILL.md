@@ -23,6 +23,7 @@ Playwright + pytest 本地 E2E。管理页 `/automation`，代码在 `automation
 | 调试失败 | 有头模式 → 单用例 pytest → 看截图/log |
 | CYO Designer 加购 | 见下方「CYO Designer」；上传后须选 thumbnail 再点 ADD |
 | Personalize 加购 | 见下方「Personalize 产品」；文本 slot 或 image slot |
+| 普通商品加购 | 见下方「普通商品 PDP」；选 color/size/qty 后直接 ADD TO CART |
 
 ## 生成用例工作流
 
@@ -157,6 +158,30 @@ venv/bin/python -m pytest automation/suites/cafepress/test_personalize_designer.
 
 ```bash
 venv/bin/python -m pytest automation/suites/cafepress/test_personalize_image.py::test_personalize_image_slot_add_to_cart \
+  -c automation/pytest.ini -v --headed
+```
+
+### 普通商品 PDP（无定制）
+
+参考 `automation/suites/cafepress/pages/product.py`、`test_standard_product.py`。
+
+与 CYO 类似选 PDP 选项，但**不点 Personalize**；部分商品（马克杯、托特包）加购后会**直接跳转 `/cart`** 而非 just added 弹窗。
+
+| 步骤 | 要点 |
+|------|------|
+| PDP | 随机 color；**仅选可见** size（马克杯无尺码可跳过） |
+| 数量 | quantity ≥ 2（`set_random_quantity`） |
+| 加购 | ADD TO CART；断言 just added 弹窗 **或** URL 为 `/cart` |
+| 断言 | `/cart` 含对应商品名、subtotal、cart id |
+
+示例 URL（各一条用例）：
+
+- 女款 T 恤：`/+i_like_to_party_and_by_womens_comfort_colors_shirt,69974637?...`
+- 马克杯：`/+funny_skeleton_as_per_my_last_email_11_oz_ceramic_mug,3016343384?...`
+- 托特包：`/+worlds_best_chef_tote_bag,468223473?...`
+
+```bash
+venv/bin/python -m pytest automation/suites/cafepress/test_standard_product.py \
   -c automation/pytest.ini -v --headed
 ```
 
