@@ -15,6 +15,9 @@ const DEFAULT_RUN_CONFIG = {
   video: 'off',
   tracing: 'off',
   locale: 'en-US',
+  checkoutEmail: '',
+  checkoutPassword: '',
+  checkoutTimeout: 120000,
 };
 
 let _suites = [];
@@ -74,6 +77,7 @@ function formatConfigSummary(config, options = {}) {
   if (config.slowMo > 0) parts.push(`慢动作 ${config.slowMo}ms`);
   if (config.video && config.video !== 'off') parts.push(`录像:${config.video}`);
   if (config.tracing && config.tracing !== 'off') parts.push(`trace:${config.tracing}`);
+  if (config.checkoutEmail) parts.push(`结账:${config.checkoutEmail}`);
   if (includeSelected && config.selectedTests?.length) {
     parts.push(`${config.selectedTests.length} 个选用例`);
   }
@@ -105,6 +109,9 @@ function getRunConfigFromUI() {
     video: $('cfgVideo')?.value || 'off',
     tracing: $('cfgTracing')?.value || 'off',
     locale: $('cfgLocale')?.value || 'en-US',
+    checkoutEmail: $('cfgCheckoutEmail')?.value?.trim() || '',
+    checkoutPassword: $('cfgCheckoutPassword')?.value || '',
+    checkoutTimeout: parseInt($('cfgCheckoutTimeout')?.value, 10) || 120000,
   };
 }
 
@@ -122,6 +129,9 @@ function applyRunConfigToUI(config) {
   if ($('cfgVideo')) $('cfgVideo').value = cfg.video;
   if ($('cfgTracing')) $('cfgTracing').value = cfg.tracing;
   if ($('cfgLocale')) $('cfgLocale').value = cfg.locale;
+  if ($('cfgCheckoutEmail')) $('cfgCheckoutEmail').value = cfg.checkoutEmail || '';
+  if ($('cfgCheckoutPassword')) $('cfgCheckoutPassword').value = cfg.checkoutPassword || '';
+  if ($('cfgCheckoutTimeout')) $('cfgCheckoutTimeout').value = cfg.checkoutTimeout || 120000;
   syncViewportPreset();
   onDeviceChange(false);
 }

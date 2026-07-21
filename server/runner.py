@@ -35,6 +35,9 @@ DEFAULT_RUN_CONFIG: dict[str, Any] = {
     "video": "off",
     "tracing": "off",
     "locale": "en-US",
+    "checkoutEmail": "",
+    "checkoutPassword": "",
+    "checkoutTimeout": 120000,
 }
 
 VALID_BROWSERS = {"chromium", "firefox", "webkit"}
@@ -64,7 +67,7 @@ def normalize_run_config(config: Optional[dict[str, Any]]) -> dict[str, Any]:
     if "slowMo" in config:
         merged["slowMo"] = max(0, min(5000, int(config["slowMo"])))
     if "timeout" in config:
-        merged["timeout"] = max(1000, min(120000, int(config["timeout"])))
+        merged["timeout"] = max(1000, min(600000, int(config["timeout"])))
     if "device" in config:
         merged["device"] = str(config["device"] or "").strip()
     if "video" in config and config["video"] in VALID_CAPTURE_MODES:
@@ -73,7 +76,20 @@ def normalize_run_config(config: Optional[dict[str, Any]]) -> dict[str, Any]:
         merged["tracing"] = config["tracing"]
     if "locale" in config:
         merged["locale"] = str(config["locale"] or "en-US").strip() or "en-US"
+    if "checkoutEmail" in config:
+        merged["checkoutEmail"] = str(config["checkoutEmail"] or "").strip()
+    if "checkoutPassword" in config:
+        merged["checkoutPassword"] = str(config["checkoutPassword"] or "")
+    if "checkoutTimeout" in config:
+        merged["checkoutTimeout"] = max(1000, min(600000, int(config["checkoutTimeout"])))
     return merged
+
+
+def _sanitize_stored_config(config: dict[str, Any]) -> dict[str, Any]:
+    stored = dict(config)
+    if stored.get("checkoutPassword"):
+        stored["checkoutPassword"] = "***"
+    return stored
 
 
 def _parse_run_config(row: Any) -> dict[str, Any]:
@@ -118,6 +134,13 @@ def _apply_run_config(cmd: list[str], env: dict[str, str], config: dict[str, Any
     env["AUTOMATION_TIMEOUT"] = str(config["timeout"])
     if config["locale"]:
         env["AUTOMATION_LOCALE"] = config["locale"]
+    if config.get("checkoutEmail"):
+        env["AUTOMATION_CAFPRESS_CHECKOUT_EMAIL"] = config["checkoutEmail"]
+    if config.get("checkoutPassword"):
+        env["AUTOMATION_CAFPRESS_CHECKOUT_PASSWORD"] = config["checkoutPassword"]
+    checkout_timeout = int(config.get("checkoutTimeout") or 120000)
+    env["AUTOMATION_CHECKOUT_TIMEOUT"] = str(checkout_timeout)
+    env["AUTOMATION_PLACE_ORDER_TIMEOUT_MS"] = str(checkout_timeout)
 MAX_LOG_CHARS = 120_000
 
 
@@ -693,7 +716,7 @@ def create_run(
     if selected_tests:
         suite_display = f"{suite_display} · {len(selected_tests)} 个用例"
 
-    stored_config = dict(run_config)
+    stored_config = _sanitize_stored_config(run_config)
     if selected_tests:
         stored_config["selectedTests"] = selected_tests
 
@@ -712,7 +735,7 @@ def create_run(
         "runId": run_id,
         "status": "running",
         "suite": suite,
-        "config": stored_config,
+        "config": _sanitize_stored_config(stored_config),
         "tests": selected_tests,
     }
 

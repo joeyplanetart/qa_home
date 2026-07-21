@@ -1,5 +1,7 @@
 """CafePress 套件专用 fixtures"""
+import json
 import os
+from pathlib import Path
 
 import pytest
 
@@ -12,12 +14,33 @@ from pages.personalize import PersonalizePage
 from pages.product import ProductPage
 from pages.search import SearchPage
 
+_CHECKOUT_CREDENTIALS_FILE = Path(__file__).with_name("checkout.local.json")
+
 
 def _checkout_timeout_ms() -> int:
     try:
         return int(os.environ.get("AUTOMATION_CHECKOUT_TIMEOUT", "120000"))
     except (TypeError, ValueError):
         return 120_000
+
+
+def _load_checkout_credentials() -> tuple[str, str]:
+    email = os.environ.get("AUTOMATION_CAFPRESS_CHECKOUT_EMAIL", "").strip()
+    password = os.environ.get("AUTOMATION_CAFPRESS_CHECKOUT_PASSWORD", "").strip()
+    if email and password:
+        return email, password
+
+    if _CHECKOUT_CREDENTIALS_FILE.is_file():
+        try:
+            data = json.loads(_CHECKOUT_CREDENTIALS_FILE.read_text(encoding="utf-8"))
+            email = str(data.get("email", "")).strip()
+            password = str(data.get("password", "")).strip()
+            if email and password:
+                return email, password
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            pass
+
+    return "", ""
 
 
 @pytest.fixture
@@ -52,12 +75,11 @@ def cart(page):
 
 @pytest.fixture
 def checkout_account():
-    email = os.environ.get("AUTOMATION_CAFPRESS_CHECKOUT_EMAIL", "").strip()
-    password = os.environ.get("AUTOMATION_CAFPRESS_CHECKOUT_PASSWORD", "").strip()
+    email, password = _load_checkout_credentials()
     if not email or not password:
         pytest.skip(
-            "Set AUTOMATION_CAFPRESS_CHECKOUT_EMAIL and "
-            "AUTOMATION_CAFPRESS_CHECKOUT_PASSWORD to run checkout order test"
+            "缺少下单账号：在运行配置填写结账邮箱/密码，或复制 "
+            "checkout.local.json.example 为 checkout.local.json"
         )
     return {"email": email, "password": password}
 

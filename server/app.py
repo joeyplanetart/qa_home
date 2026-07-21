@@ -117,11 +117,14 @@ class AutomationRunConfig(BaseModel):
     viewportWidth: int = Field(default=1280, ge=320, le=3840)
     viewportHeight: int = Field(default=720, ge=240, le=2160)
     slowMo: int = Field(default=0, ge=0, le=5000)
-    timeout: int = Field(default=30000, ge=1000, le=120000)
+    timeout: int = Field(default=30000, ge=1000, le=600000)
     device: str = ""
     video: str = "off"
     tracing: str = "off"
     locale: str = "en-US"
+    checkoutEmail: str = ""
+    checkoutPassword: str = ""
+    checkoutTimeout: int = Field(default=120000, ge=1000, le=600000)
 
 
 class AutomationRunRequest(BaseModel):

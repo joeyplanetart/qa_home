@@ -190,14 +190,11 @@ venv/bin/python -m pytest automation/suites/cafepress/test_standard_product.py \
 
 参考 `pages/cart.py`、`pages/checkout.py`、`flows/add_products.py`、`test_checkout_order.py`。
 
-**会真实下单**，运行前设置账号环境变量（勿提交密码到仓库）：
+**会真实下单**，运行前设置账号（任选其一）：
 
-```bash
-export AUTOMATION_CAFPRESS_CHECKOUT_EMAIL='your@email.com'
-export AUTOMATION_CAFPRESS_CHECKOUT_PASSWORD='your-password'
-export AUTOMATION_CHECKOUT_TIMEOUT=120000
-export AUTOMATION_PLACE_ORDER_TIMEOUT_MS=120000
-```
+1. **本地文件（推荐）**：复制 `checkout.local.json.example` → `checkout.local.json`（已在 `.gitignore`）
+2. **运行配置**：`/automation` 展开「运行配置」填写「结账邮箱 / 结账密码」
+3. **环境变量**：`AUTOMATION_CAFPRESS_CHECKOUT_EMAIL` / `AUTOMATION_CAFPRESS_CHECKOUT_PASSWORD`
 
 | 步骤 | 要点 |
 |------|------|
